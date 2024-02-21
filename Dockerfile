@@ -1,24 +1,26 @@
-FROM node:14
-
-# Create app directory
-WORKDIR /usr/src/app
-
-RUN git clone https://github.com/frangoteam/FUXA.git
-WORKDIR /usr/src/app/FUXA
-
-# Install server
-WORKDIR /usr/src/app/FUXA/server
-RUN npm install
+FROM node:18 as builder
 
 # Workaround for sqlite3 https://stackoverflow.com/questions/71894884/sqlite3-err-dlopen-failed-version-glibc-2-29-not-found
+RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev
+
+WORKDIR /fuxa
+ADD . /fuxa/
+WORKDIR /fuxa/client
+RUN npm install && npm run build
+
+WORKDIR /fuxa/server
+RUN npm install --build-from-source --sqlite=/usr/bin sqlite3
+
+
+FROM node:18
 RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev && \
     apt-get autoremove -yqq --purge && \
     apt-get clean  && \
-    rm -rf /var/lib/apt/lists/*  && \
-    npm install --build-from-source --sqlite=/usr/bin sqlite3
+    rm -rf /var/lib/apt/lists/*
 
-ADD . /usr/src/app/FUXA
+COPY --from=builder /fuxa/server /fuxa/server
+COPY --from=builder /fuxa/client/dist /fuxa/client/
 
-WORKDIR /usr/src/app/FUXA/server
+WORKDIR /fuxa/server
 EXPOSE 1881
-CMD [ "npm", "start" ]
+ENTRYPOINT [ "npm", "start" ]
