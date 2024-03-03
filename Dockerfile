@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev
 WORKDIR /fuxa
 ADD . /fuxa/
 WORKDIR /fuxa/client
-RUN npm install && npm run build
+RUN npm install --legacy-peer-deps && npm run build
 
 WORKDIR /fuxa/server
 RUN npm install --build-from-source --sqlite=/usr/bin sqlite3
