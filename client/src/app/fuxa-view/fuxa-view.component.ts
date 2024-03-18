@@ -12,7 +12,7 @@ import {
     ViewChild,
     ViewContainerRef
 } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { ChangeDetectorRef } from '@angular/core';
 
 import { Event, GaugeEvent, GaugeEventActionType, GaugeSettings, GaugeProperty, GaugeEventType, GaugeRangeProperty, GaugeStatus, Hmi, View, ViewType, Variable, ZoomModeType, InputOptionType } from '../_models/hmi';
@@ -27,7 +27,8 @@ import { NgxTouchKeyboardDirective } from '../framework/ngx-touch-keyboard/ngx-t
 import { HmiService } from '../_services/hmi.service';
 import { HtmlSelectComponent } from '../gauges/controls/html-select/html-select.component';
 import { FuxaViewDialogComponent, FuxaViewDialogData } from './fuxa-view-dialog/fuxa-view-dialog.component';
-import { MatDialog } from '@angular/material/dialog';
+import {DialogPosition, MatDialog} from '@angular/material/dialog';
+import { WebcamPlayerDialogComponent, WebcamPlayerDialogData } from '../gui-helpers/webcam-player/webcam-player-dialog/webcam-player-dialog.component';
 
 declare var SVG: any;
 
@@ -62,13 +63,13 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
     inputDialog = { show: false, timer: null, x: 0, y: 0, target: null };
     gaugeInput = '';
     gaugeInputCurrent = '';
-
+    parent: FuxaViewComponent;
     cardViewType = Utils.getEnumKey(ViewType, ViewType.cards);
 
     private subscriptionOnChange: Subscription;
     protected staticValues: any = {};
     protected plainVariableMapping: any = {};
-    private subscriptionLoad: Subscription;
+    private destroy$ = new Subject<void>();
 
     constructor(
         private translateService: TranslateService,
@@ -96,13 +97,15 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
     ngAfterViewInit() {
         this.loadHmi(this.view);
         /* check if already loaded */
-        if (this.projectService.getHmi()) {
-            this.projectService.initScheduledScripts();
-        } else {
-            this.subscriptionLoad = this.projectService.onLoadHmi.subscribe(
-                load => {this.projectService.initScheduledScripts();
-            });
-        }
+        // if (this.projectService.getHmi()) {
+        //     this.initScheduledScripts();
+        // } else {
+        //     this.projectService.onLoadHmi.pipe(
+        //         takeUntil(this.destroy$)
+        //     ).subscribe(() => {
+        //         this.initScheduledScripts();
+        //     });
+        // }
         try {
             this.gaugesManager.emitBindedSignals(this.id);
         } catch (err) {
@@ -112,10 +115,8 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
     ngOnDestroy() {
         try {
-			if (this.subscriptionLoad) {
-				this.subscriptionLoad.unsubscribe();
-			}
-            this.projectService.clearScheduledScripts();
+            this.destroy$.next();
+            this.destroy$.complete();
             this.gaugesManager.unbindGauge(this.id);
             this.clearGaugeStatus();
             if (this.subscriptionOnChange) {
@@ -209,13 +210,13 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                     continue;
                 }
                 try {
-                    let gauge = this.gaugesManager.initElementAdded(items[key], this.resolver, this.viewContainerRef, true);
+                    let gauge = this.gaugesManager.initElementAdded(items[key], this.resolver, this.viewContainerRef, true, this);
                     this.gaugesManager.bindGauge(gauge, this.id, items[key],
                         (gaToBindMouseEvents) => {
                             this.onBindMouseEvents(gaToBindMouseEvents);
                         },
-                        (gatobindhtmlevent) => {
-                            this.onBindHtmlEvent(gatobindhtmlevent);
+                        (gaToBindHtmlEvent) => {
+                            this.onBindHtmlEvent(gaToBindHtmlEvent);
                         });
                     if (items[key].property) {
                         let gaugeSetting = items[key];
@@ -377,7 +378,7 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
      * @param ga
      */
     private onBindMouseEvents(ga: GaugeSettings) {
-        let self = this;
+        let self = this.parent || this;
         let svgele = FuxaViewComponent.getSvgElement(ga.id);
         if (svgele) {
             let clickEvents = self.gaugesManager.getBindMouseEvent(ga, GaugeEventType.click);
@@ -427,7 +428,9 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                 self.openWindow(ga.id, ev, events[i].actparam, events[i].actoptions);
             } else if (eventTypes.indexOf(GaugeEventActionType.onclose) === actindex) {
                 self.onClose(ev);
-            } else if (events[i].action === this.eventRunScript) {
+            } else if (eventTypes.indexOf(GaugeEventActionType.onMonitor) === actindex) {
+                self.onMonitor(ga, ev, events[i].actparam, events[i].actoptions);
+            }else if (events[i].action === this.eventRunScript) {
                 self.onRunScript(events[i]);
             }
         }
@@ -639,6 +642,7 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
             panelClass: 'fuxa-dialog-property',
             disableClose: true,
             data: dialogData,
+            autoFocus: false,
             position: { top: '60px' }
         });
         dialogRef.afterClosed().subscribe();
@@ -771,6 +775,25 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                 console.error(err);
             });
         }
+    }
+
+    onMonitor(ga: GaugeSettings, event:any, viewref: string, options: any = {}){
+        // console.info('onMonitor');
+        let dialogData = <WebcamPlayerDialogData>{
+            view: this.getView(viewref),
+            bkColor: 'transparent',
+            gaugesManager: this.gaugesManager,
+            ga: ga
+        };
+        let pos =<DialogPosition>{ top: event.layerY+30+'px', left: event.layerX+10+'px'}
+        // let pos =<DialogPosition>{ top: '60px'}
+        let dialogRef = this.fuxaDialog.open(WebcamPlayerDialogComponent, {
+            panelClass: 'fuxa-dialog-property',
+            disableClose: false,
+            data: dialogData,
+            position: pos
+        });
+        dialogRef.afterClosed().subscribe();
     }
 
     getCardHeight(height) {
