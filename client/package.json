@@ -13,7 +13,7 @@
     "start": "ng serve",
     "demo": "ng serve -c demo",
     "client": "ng serve -c client",
-    "build": "ng build",
+    "build": "ng build -c production",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"
