@@ -13,7 +13,7 @@ env:
 on: workflow_dispatch
   #push:
   #  branches:
-  #    - master
+#    - master
 
 jobs:
   build-container:
@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: { context }/Dockerfile-multi
+          file: Dockerfile-multi
           push: true
           platforms: ${{ env.platforms }}
           tags: starmetal/${{ env.app }}:${{ env.version }}
