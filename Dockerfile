@@ -9,7 +9,7 @@ WORKDIR /fuxa/client
 RUN npm install --legacy-peer-deps && npm run build
 
 WORKDIR /fuxa/server
-RUN npm install --build-from-source --sqlite=/usr/bin sqlite3
+RUN npm install --legacy-peer-deps
 
 
 FROM node:18
@@ -22,5 +22,6 @@ COPY --from=builder /fuxa/server /fuxa/server
 COPY --from=builder /fuxa/client/dist /fuxa/client/dist
 
 WORKDIR /fuxa/server
+RUN npm install --build-from-source --sqlite=/usr/bin sqlite3
 EXPOSE 1881
 ENTRYPOINT [ "npm", "start" ]
