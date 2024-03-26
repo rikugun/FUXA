@@ -1,4 +1,4 @@
-FROM starmetal/fuxa:latest as builder
+FROM --platform=linux/amd64 starmetal/fuxa:latest as builder
 
 FROM node:18
 RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev && \
