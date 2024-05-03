@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, lastValueFrom } from 'rxjs';
 
 import { EndPointApi } from '../_helpers/endpointapi';
 import { environment } from '../../environments/environment';
@@ -31,25 +31,34 @@ export class ScriptService {
                     let params = { script: script };
                     this.http.post<any>(this.endPointConfig + '/api/runscript', { headers: header, params: params }).subscribe(result => {
                         observer.next(result);
+                        observer.complete();
                     }, err => {
                         console.error(err);
                         observer.error(err);
                     });
                 } else {
                     observer.next();
+                    observer.complete();
                 }
             } else {
-                if (script.parameters?.length > 0) {
-                    console.warn('TODO: Script with mode CLIENT not work with parameters.');
-                }
+                let parameterToAdd = '';
+                script.parameters?.forEach(param => {
+                    if (Utils.isNumeric(param.value)) {
+                        parameterToAdd += `let ${param.name} = ${param.value};`;
+                    } else {
+                        parameterToAdd += `let ${param.name} = '${param.value}';`;
+                    }
+                });
                 try {
-                    const asyncScript = `(async () => { ${this.addSysFunctions(script.code)} })();`;
+                    const code = `${parameterToAdd}${script.code}`;
+                    const asyncScript = `(async () => { ${this.addSysFunctions(code)} })();`;
                     const result = eval(asyncScript);
                     observer.next(result);
                 } catch (err) {
                     console.error(err);
                     observer.error(err);
                 }
+                observer.complete();
             }
         });
     }
@@ -74,6 +83,8 @@ export class ScriptService {
         code = code.replace(/\$setTagDaqSettings\(/g, 'await this.$setTagDaqSettings(');
         code = code.replace(/\$setView\(/g, 'this.$setView(');
         code = code.replace(/\$enableDevice\(/g, 'this.$enableDevice(');
+        code = code.replace(/\$invokeObject\(/g, 'this.$invokeObject(');
+        code = code.replace(/\$runServerScript\(/g, 'this.$runServerScript(');
         return code;
     }
 
@@ -112,5 +123,19 @@ export class ScriptService {
 
     public $enableDevice(deviceName: string, enable: boolean) {
         this.hmiService.deviceEnable(deviceName, enable);
+    }
+
+    public $invokeObject(gaugeName: string, fncName: string, ...params: any[]) {
+        const gauge = this.hmiService.getGaugeMapped(gaugeName);
+        if (gauge[fncName]) {
+            return gauge[fncName](...params);
+        }
+        return null;
+    }
+
+    public async $runServerScript(scriptName: string, ...params: any[]) {
+        let scriptToRun = this.projectService.getScripts().find(dataScript => dataScript.name == scriptName);
+        scriptToRun.parameters = params;
+        return await await lastValueFrom(this.runScript(scriptToRun));
     }
 }

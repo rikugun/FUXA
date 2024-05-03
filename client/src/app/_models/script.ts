@@ -95,6 +95,12 @@ export class SystemFunctions {
     },
     {
         name: '$enableDevice', text: 'script.sys-fnc-enableDevice-text', tooltip: 'script.sys-fnc-enableDevice-tooltip', params: [false, false], paramsText: 'script.sys-fnc-enableDevice-params'
+    },
+    {
+        name: '$invokeObject', text: 'script.sys-fnc-invokeObject-text', tooltip: 'script.sys-fnc-invokeObject-tooltip', params: [false, false, false], paramsText: 'script.sys-fnc-invokeObject-params'
+    },
+    {
+        name: '$runServerScript', text: 'script.sys-fnc-runServerScript-text', tooltip: 'script.sys-fnc-runServerScript-tooltip', params: [false, false], paramsText: 'script.sys-fnc-runServerScript-params'
     }];
 }
 
@@ -118,9 +124,17 @@ export class TemplatesCode {
 } else {
     return 'Missing chart lines';
 }`
+    },
+    {
+        name: 'invoke-chart-update-options', text: 'script.template-invoke-chart-update-options-text', tooltip: 'script.template-invoke-chart-update-options-tooltip',
+        code: `let opt = $invokeObject('chart_1', 'getOptions');
+if (opt) {
+    opt.scaleY1min = 100;
+    opt.scaleY1max = 200;
+}
+$invokeObject('chart_1', 'updateOptions', opt);`
     }];
 }
-
 
 export interface SystemFunction {
     name: string;           // javascript function defined in backend
