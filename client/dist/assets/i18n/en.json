@@ -398,6 +398,7 @@
     "table.property-row-background": "Background",
     "table.property-row-color": "Color",
     "table.property-row-fontSize": "Font size",
+    "table.property-selection": "Selection",
     "table.property-layout": "Layout",
     "table.property-filter": "Filter",
     "table.property-paginator": "Paginator",
@@ -646,6 +647,9 @@
     "editor.tools-hyperlink-title": "Make Hyperlink",
     "editor.tools-svg-selector": "Item list selector",
 
+    "editor.settings-general": "General",
+    "editor.settings-events": "Events",
+
     "tags.ids-config-title": "Tags-Ids reference",
 
     "svg.selector.property-title": "View item list",
@@ -828,6 +832,9 @@
     "device.webapi-property-gettags": "URL GET Tags",
     "device.webapi-property-posttags": "URL POST Tags",
     "device.webapi-property-loadtags": "Load Tags",
+    "device.property-dsn": "Data Source Name (DSN=Database name)",
+    "device.property-odbc-result": "Result of tables found",
+    "device.not-odbc-result": "Database tables result",
 
     "device.browsetopics-property-title": "Broker Topics to subscribe and publish",
     "device.browsetopics-property-sub": "Subscribe",
@@ -877,6 +884,7 @@
     "device.tag-property-unit": "Unit",
     "device.tag-property-digits": "Decimal",
     "device.tag-property-initvalue": "Init value",
+    "device.tag-property-description": "Description",
     "device.tag-array-id": "Array ID:",
     "device.tag-array-value": "Value:",
     "device-tag-dialog-title": "Tag Selection",
