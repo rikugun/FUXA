@@ -1,13 +1,13 @@
 {
   "name": "fuxa-server",
-  "version": "1.1.19-1615",
+  "version": "1.2.0-1676",
   "description": "Web-based Process Visualization (SCADA/HMI/Dashboard) software",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node main.js"
   },
-  "author": "frangoteam <4frango@gmail.com>",
+  "author": "frangoteam <info@frangoteam.org>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,6 +39,7 @@
     "node-schedule": "2.1.1",
     "nodemailer": "6.9.9",
     "nopt": "5.0.0",
+    "odbc": "2.4.8",
     "pdfmake": "0.2.5",
     "socket.io": "2.5.0",
     "sqlite3": "5.1.5",

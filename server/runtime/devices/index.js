@@ -298,7 +298,7 @@ function getTagDaqSettings(tagId) {
  */
 function setTagDaqSettings(tagId, settings) {
     try {
-        let deviceId = getDeviceIdFromTag(tagId)
+        let deviceId = getDeviceIdFromTag(tagId);
         if (activeDevices[deviceId]) {
             return activeDevices[deviceId].setTagDaqSettings(tagId, settings);
         }
@@ -323,6 +323,60 @@ function enableDevice(deviceName, enable) {
             updateDevice(device);
         }
         runtime.logger.info(`devices.enableDevice: '${deviceName} - ${enable}'`, true);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+/**
+ * Get the Device property
+ * used from Scripts
+ * @param {*} deviceName
+ */
+function getDeviceProperty(deviceName) {
+    try {
+        let device = runtime.project.getDevice(deviceName);
+        if (device) {
+            return device.property;
+        }
+    } catch (err) {
+        console.error(err);
+    }
+    return null;
+}
+
+/**
+ * Set the Device property
+ * used from Scripts
+ * @param {*} deviceName
+ * @param {*} property
+ */
+function setDeviceProperty(deviceName, property) {
+    try {
+        let device = runtime.project.getDevice(deviceName);
+        if (device) {
+            device.property = property;
+            updateDevice(device);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+    return null;
+}
+
+/**
+ * return Device object
+ * used from Scripts
+ * @param {*} deviceName string
+ * @param {*} asInterface boolean
+ */
+function getDevice(deviceName, asInterface) {
+    try {
+        const device = runtime.project.getDevice(deviceName);
+        if (device) {
+            return asInterface ? activeDevices[device.id].getComm() : activeDevices[device.id];
+        }
+        return null;
     } catch (err) {
         console.error(err);
     }
@@ -483,7 +537,10 @@ var devices = module.exports = {
     getRequestResult: getRequestResult,
     getTagFormat: getTagFormat,
     enableDevice: enableDevice,
+    getDevice: getDevice,
     getTagId: getTagId,
     getTagDaqSettings: getTagDaqSettings,
     setTagDaqSettings: setTagDaqSettings,
+    getDeviceProperty: getDeviceProperty,
+    setDeviceProperty: setDeviceProperty,
 }
