@@ -320,7 +320,16 @@ export class DevicePropertyComponent implements OnInit, OnDestroy {
 				};
 				return result;
 			}
-		}
+		}else if (this.data.device.type === DeviceType.M7s) {
+            if (this.security.subscribeKey || this.security.username || this.security.password){
+                let result = <DeviceSecurityGeneral>{
+                    uid: this.security.username,
+                    pwd: this.security.password,
+                    subKey: this.security.subscribeKey,
+                };
+                return result;
+            }
+        }
 		return null;
 	}
 
@@ -341,6 +350,7 @@ export class DevicePropertyComponent implements OnInit, OnDestroy {
 			if (value.cert || value.pkey || value.caCert) {
 				this.panelCertificate?.open();
 			}
+            this.security.subscribeKey = value.subKey;
 		}
 	}
 
@@ -360,6 +370,12 @@ export class DevicePropertyComponent implements OnInit, OnDestroy {
 		}
 		return result;
 	}
+
+    onCheckM7s() {
+        this.propertyLoading = true;
+        this.propertyError = '';
+        this.hmiService.askDeviceProperty(this.data.device.property.address, this.data.device.type);
+    }
 }
 
 interface DeviceSecurityGeneral {
@@ -371,4 +387,5 @@ interface DeviceSecurityGeneral {
 	cert: string;
 	pkey: string;
 	caCert: string;
+    subKey: string;
 }

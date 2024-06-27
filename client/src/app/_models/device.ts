@@ -39,7 +39,7 @@ export class Device {
         id: 'Device id, GUID',
         name: 'Device name',
         enabled: 'Enabled',
-        type: 'Device Type: FuxaServer | SiemensS7 | OPCUA | BACnet | ModbusRTU | ModbusTCP | WebAPI | MQTTclient | internal | EthernetIP',
+        type: 'Device Type: FuxaServer | SiemensS7 | OPCUA | BACnet | ModbusRTU | ModbusTCP | WebAPI | MQTTclient | internal | EthernetIP | M7s',
         polling: 'Polling interval in millisec., check changed value after ask value, by OPCUA there is a monitor',
         property: 'Connection property depending of type',
         tags: 'Tags list of Tag',
@@ -187,6 +187,7 @@ export class DeviceSecurity {
     certificateFileName: string;
     privateKeyFileName: string;
     caCertificateFileName: string;
+    subscribeKey: string; //M7s subscribe key
 }
 
 export enum DeviceType {
@@ -200,7 +201,8 @@ export enum DeviceType {
     MQTTclient = 'MQTTclient',
     internal = 'internal',
     EthernetIP = 'EthernetIP',
-    ODBC = 'ODBC'
+    ODBC = 'ODBC',
+    M7s = 'M7s'
     // Template: 'template'
 }
 
@@ -290,6 +292,12 @@ export enum BACnetObjectType {
     CALENDAR = '',                              // 6
     COMMAND = '',                               // 7
     DEVICE = ''                                 // 8
+}
+
+export enum M7sChannelSaveType {
+    NO_SAVE = '0',
+    SAVE_PULL_ON_START='1',
+    SAVE_PULL_ON_SUB='2'
 }
 
 export const DEVICE_PREFIX = 'd_';

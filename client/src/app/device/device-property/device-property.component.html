@@ -81,13 +81,13 @@
                     </div>
                 </div>
                 <div *ngSwitchCase="deviceType.BACnet">
-                    <div class="my-form-field" 
+                    <div class="my-form-field"
                          style="display: block;margin-bottom: 10px;">
                         <span>{{'device.property-interface-address' | translate}}</span>
                         <input [(ngModel)]="data.device.property.address"
                                placeholder="{{'device.property-interface-address-ph' | translate}}"
                                class="address"
-                               type="ip" 
+                               type="ip"
                                (click)="onAddressChanged()">
                     </div>
                     <div class="my-form-field block mb10">
@@ -101,7 +101,7 @@
                     <div class="my-form-field"
                          style="display: inline-block;margin-bottom: 10px;">
                         <span>{{'device.property-adpu-timeout' | translate}}</span>
-                        <input numberOnly 
+                        <input numberOnly
                                [(ngModel)]="data.device.property.adpuTimeout"
                                placeholder="{{'device.property-adpu-timeout-ph' | translate}}"
                                class="adpu"
@@ -210,7 +210,7 @@
                             <span>{{'device.property-delay' | translate}}</span>
                             <input numberOnly [(ngModel)]="data.device.property.delay" style="width: 100px" type="number">
                         </div>
-                    </div>                        
+                    </div>
                 </div>
                 <div *ngSwitchCase="deviceType.WebAPI">
                     <div class="my-form-field" style="display: inline-block;margin-bottom: 10px;">
@@ -381,7 +381,44 @@
 
                         </mat-expansion-panel>
                     </div>
-                </div> 
+                </div>
+                <div *ngSwitchCase="deviceType.M7s">
+                    <div class="my-form-field" style="display: block;margin-bottom: 10px;">
+                        <span>{{'device.property-url' | translate}}</span>
+                        <input [(ngModel)]="data.device.property.address" style="width: 350px" type="ip" (click)="onAddressChanged()">
+                    </div>
+                    <div class="my-form-field" class="my-expansion-panel">
+                        <mat-expansion-panel #panelProperty
+                                             (closed)="onPropertyExpand(false)" (opened)="onPropertyExpand(true);onCheckM7s()">
+                            <mat-expansion-panel-header class="header" [collapsedHeight]="'32px'" [expandedHeight]="'32px'">
+                                <mat-panel-title>
+                                    <span *ngIf="propertyExpanded">{{'device.property-security' | translate}}</span>
+                                    <span *ngIf="!propertyExpanded">{{'device.not-property-security' | translate}}</span>
+                                </mat-panel-title>
+                            </mat-expansion-panel-header>
+                            <div *ngIf="propertyLoading">
+                                <mat-spinner style="margin: auto" diameter="20"></mat-spinner>
+                            </div>
+                            <ng-container *ngIf="!propertyLoading">
+                                <div class="expand-panel">
+                                    <div class="my-form-field">
+                                        <span>{{'general.username' | translate}}</span>
+                                        <input [(ngModel)]="security.username" style="width: 315px;background-color:var(--formInputExtBackground)" type="text">
+                                    </div>
+                                    <div class="my-form-field">
+                                        <span>{{'general.password' | translate}}</span>
+                                        <input autocomplete="off" (keydown)="keyDownStopPropagation($event)" [type]="showPassword ? 'text' : 'password'" [(ngModel)]="security.password" style="width: 315px;background-color:var(--formInputExtBackground)">
+                                        <mat-icon matSuffix (click)="showPassword = !showPassword" class="show-password">{{showPassword ? 'visibility' : 'visibility_off'}}</mat-icon>
+                                    </div>
+                                    <div class="my-form-field">
+                                        <span>{{'general.subscribeKey' | translate}}</span>
+                                        <input [(ngModel)]="security.subscribeKey" style="width: 315px;background-color:var(--formInputExtBackground)" type="text">
+                                    </div>
+                                </div>
+                            </ng-container>
+                        </mat-expansion-panel>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
