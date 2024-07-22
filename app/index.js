@@ -24,8 +24,10 @@ const createWindow = () => {
         webPreferences: {
             // preload: path.join(__dirname, 'preload.js')
         },
-        fullscreen: true
+        fullscreen: true,
+        frame: false /*隐藏导航条，最大化最小化按键*/
     })
+    win.setMenu(null)
     //wait for server startup
     setTimeout(() => {
         win.loadURL('http://localhost:1881')
