@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { GaugeBaseComponent } from '../../gauge-base/gauge-base.component';
 import { GaugeAction, GaugeSettings, GaugeStatus, Variable, GaugeActionsType, GaugePropertyColor } from '../../../_models/hmi';
 import { Utils } from '../../../_helpers/utils';
@@ -13,7 +13,6 @@ declare var SVG: any;
 })
 export class HtmlButtonComponent extends GaugeBaseComponent {
 
-    @Input() data: any;
 
     static TypeTag = 'svg-ext-html_button';
     static LabelTag = 'HtmlButton';

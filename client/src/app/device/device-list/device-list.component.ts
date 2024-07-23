@@ -1,15 +1,15 @@
 /* eslint-disable @angular-eslint/component-class-suffix */
 import { Component, OnInit, AfterViewInit, ViewChild, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
 import { ChangeDetectorRef } from '@angular/core';
-import { MatTable, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator } from '@angular/material/paginator';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { MatLegacyTable as MatTable, MatLegacyTableDataSource as MatTableDataSource } from '@angular/material/legacy-table';
+import { MatLegacyPaginator as MatPaginator } from '@angular/material/legacy-paginator';
+import { MatLegacyMenuTrigger as MatMenuTrigger } from '@angular/material/legacy-menu';
 import { MatSort } from '@angular/material/sort';
 import { SelectionModel } from '@angular/cdk/collections';
 import { TranslateService } from '@ngx-translate/core';
 
-import { ITagOption, TagOptionsComponent } from './../tag-options/tag-options.component';
+import { TagOptionType, TagOptionsComponent } from './../tag-options/tag-options.component';
 import { Tag, Device, DeviceType, TAG_PREFIX } from '../../_models/device';
 import { ProjectService } from '../../_services/project.service';
 import { HmiService } from '../../_services/hmi.service';
@@ -307,12 +307,16 @@ export class DeviceListComponent implements OnInit, AfterViewInit {
             data: { device: this.deviceSelected, tags: tags },
             position: { top: '60px' }
         });
-        dialogRef.afterClosed().subscribe((tagOption: ITagOption) => {
+        dialogRef.afterClosed().subscribe((tagOption: TagOptionType) => {
             if (tagOption) {
                 for (let i = 0; i < tags.length; i++) {
                     tags[i].daq = tagOption.daq;
                     tags[i].format = tagOption.format;
                     tags[i].scale = tagOption.scale;
+                    tags[i].scaleReadFunction = tagOption.scaleReadFunction;
+                    tags[i].scaleReadParams = tagOption.scaleReadParams;
+                    tags[i].scaleWriteFunction = tagOption.scaleWriteFunction;
+                    tags[i].scaleWriteParams = tagOption.scaleWriteParams;
                 }
                 this.projectService.setDeviceTags(this.deviceSelected);
             }

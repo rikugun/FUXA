@@ -1,7 +1,7 @@
 ﻿/* eslint-disable @angular-eslint/component-class-suffix */
 import { Component, Inject, OnInit, OnDestroy, AfterViewInit, ViewChild, ViewContainerRef, ComponentFactoryResolver, ElementRef } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog, MatLegacyDialogRef as MatDialogRef, MAT_LEGACY_DIALOG_DATA as MAT_DIALOG_DATA} from '@angular/material/legacy-dialog';
 import { MatDrawer } from '@angular/material/sidenav';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
@@ -33,7 +33,7 @@ import { GaugeSemaphoreComponent } from '../gauges/controls/gauge-semaphore/gaug
 import { HtmlSwitchPropertyComponent } from '../gauges/controls/html-switch/html-switch-property/html-switch-property.component';
 
 import { GridsterItem } from 'angular-gridster2';
-import { CardConfigComponent } from './card-config/card-config.component';
+import { CardConfigComponent, CardConfigType } from './card-config/card-config.component';
 import { CardsViewComponent } from '../cards-view/cards-view.component';
 import { IElementPreview } from './svg-selector/svg-selector.component';
 import { TagIdRef, TagsIdsConfigComponent, TagsIdsData } from './tags-ids-config/tags-ids-config.component';
@@ -88,9 +88,10 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
     gridOn = false;
     isAnySelected = false;
     selectedElement: SelElement = new SelElement();
-    panelsState = {
+    panelsState: PanelsStateType = {
         enabled: false,
         panelView: true,
+        panelViewHeight: 200,
         panelGeneral: true,
         panelC: true,
         panelD: true,
@@ -107,9 +108,8 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
     dashboard: Array<GridsterItem>;
     cardViewType = Utils.getEnumKey(ViewType, ViewType.cards);
     svgViewType = Utils.getEnumKey(ViewType, ViewType.svg);
-
     shapesGrps = [];
-    private gaugesRef = [];
+    private gaugesRef = {};
 
     private subscriptionSave: Subscription;
     private subscriptionLoad: Subscription;
@@ -502,7 +502,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
 
                 // check gauge to init
-                this.gaugesRef = [];
+                this.gaugesRef = {};
                 setTimeout(() => {
                     for (let key in v.items) {
                         let ga: GaugeSettings = this.getGaugeSettings(v.items[key]);
@@ -549,7 +549,10 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         let views = this.hmi.views.filter((v) => v.type !== cardType && exist.indexOf(v.name) < 0).map((v) => v.name);
         let dialogRef = this.dialog.open(CardConfigComponent, {
             position: { top: '60px' },
-            data: { item: JSON.parse(JSON.stringify(item)), views: views }
+            data: <CardConfigType> {
+                item: JSON.parse(JSON.stringify(item)),
+                views: views
+            }
         });
         dialogRef.afterClosed().subscribe(result => {
             if (result) {
@@ -700,7 +703,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
             for (let i = 0; i < ele.length; i++) {
                 if (this.currentView.items[ele[i].id]) {
                     delete this.currentView.items[ele[i].id];
-                    if (this.gaugesRef.indexOf(ele[i].id) !== -1) {
+                    if (this.gaugesRef.hasOwnProperty(ele[i].id)) {
                         if (this.gaugesRef[ele[i].id].ref && this.gaugesRef[ele[i].id].ref['ngOnDestroy']) {
                             try {
                                 this.gaugesRef[ele[i].id].ref['ngOnDestroy']();
@@ -893,7 +896,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         let gauge = this.gaugesManager.initElementAdded(ga, this.resolver, this.viewContainerRef, false);
         if (gauge) {
             if (gauge !== true) {
-                if (this.gaugesRef.indexOf(ga.id) === -1) {
+                if (!this.gaugesRef.hasOwnProperty(ga.id)) {
                     this.gaugesRef[ga.id] = { type: ga.type, ref: gauge };
                 }
             }
@@ -1115,7 +1118,10 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
      * select the view, save current vieww before
      * @param view selected view to load resource
      */
-    onSelectView(view) {
+    onSelectView(view: View, force = true) {
+        if (!force && this.currentView?.id === view?.id) {
+            return;
+        }
         if (this.currentView) {
             this.currentView.svgcontent = this.getContent();
             // this.hmi.views[this.currentView].svgcontent = this.winRef.nativeWindow.svgEditor.getSvgString();
@@ -1206,7 +1212,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         let ps = localStorage.getItem('@frango.webeditor.panelsState');
         this.panelsState.enabled = true;
         if (ps) {
-            this.panelsState = JSON.parse(ps);
+            this.panelsState = Utils.mergeDeep(this.panelsState, JSON.parse(ps));
         }
     }
 
@@ -1215,6 +1221,9 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     savePanelState() {
         if (this.panelsState.enabled) {
+            if (this.panelsState.panelViewHeight < 100) {
+                this.panelsState.panelViewHeight = 100;
+            }
             localStorage.setItem('@frango.webeditor.panelsState', JSON.stringify(this.panelsState));
         }
     }
@@ -1350,6 +1359,10 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                 data: {
                     settings: tempsettings, devices: Object.values(this.projectService.getDevices()),
                     withEvents: eventsSupported, withActions: actionsSupported, withBitmask: bitmaskSupported,
+                    views: hmi.views,
+                    view: this.currentView,
+                    scripts: this.projectService.getScripts(),
+                    inputs: Object.values(this.currentView.items).filter(gs => gs.name && (gs.id.startsWith('HXS_') || gs.id.startsWith('HXI_'))),
                     names: names
                 }
             });
@@ -1594,4 +1607,14 @@ export class DialogLinkProperty {
 export enum EditorModeType {
     SVG,
     CARDS
+}
+
+interface PanelsStateType {
+    enabled?: boolean;
+    panelView?: boolean;
+    panelViewHeight?: number;
+    panelGeneral?: boolean;
+    panelC?: boolean;
+    panelD?: boolean;
+    panelS?: boolean;
 }

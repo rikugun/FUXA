@@ -166,7 +166,7 @@ import { RcgiService } from './_services/rcgi/rcgi.service';
 import { ToastNotifierService } from './_services/toast-notifier.service';
 import { MyFileService } from './_services/my-file.service';
 import { TagsIdsConfigComponent } from './editor/tags-ids-config/tags-ids-config.component';
-import { MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions } from '@angular/material/tooltip';
+import { MAT_LEGACY_TOOLTIP_DEFAULT_OPTIONS as MAT_TOOLTIP_DEFAULT_OPTIONS, MatLegacyTooltipDefaultOptions as MatTooltipDefaultOptions } from '@angular/material/legacy-tooltip';
 import { HtmlImageComponent } from './gauges/controls/html-image/html-image.component';
 import { NgxSchedulerComponent } from './gui-helpers/ngx-scheduler/ngx-scheduler.component';
 import { FlexDeviceTagComponent } from './gauges/gauge-property/flex-device-tag/flex-device-tag.component';
@@ -187,6 +187,7 @@ import { TagPropertyEditBacnetComponent } from './device/tag-property/tag-proper
 import { TagPropertyEditWebapiComponent } from './device/tag-property/tag-property-edit-webapi/tag-property-edit-webapi.component';
 import { TagPropertyEditEthernetipComponent } from './device/tag-property/tag-property-edit-ethernetip/tag-property-edit-ethernetip.component';
 import { ViewPropertyComponent } from './editor/view-property/view-property.component';
+import { ResizeDirective } from './_directives/resize.directive';
 
 export function createTranslateLoader(http: HttpClient) {
     return new TranslateHttpLoader(http, './assets/i18n/', '.json');
@@ -338,7 +339,8 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         PanelComponent,
         PanelPropertyComponent,
         WebcamPlayerComponent,
-        WebcamPlayerDialogComponent
+        WebcamPlayerDialogComponent,
+        ResizeDirective
     ],
     imports: [
         BrowserModule,

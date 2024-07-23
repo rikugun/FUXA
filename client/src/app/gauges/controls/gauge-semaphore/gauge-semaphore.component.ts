@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { GaugeBaseComponent } from '../../gauge-base/gauge-base.component';
 import { GaugeSettings, GaugeStatus, Variable, GaugeActionsType, GaugeAction } from '../../../_models/hmi';
 import { GaugeDialogType } from '../../gauge-property/gauge-property.component';
@@ -12,7 +12,6 @@ declare var SVG: any;
 })
 export class GaugeSemaphoreComponent extends GaugeBaseComponent {
 
-    @Input() data: any;
 
     static TypeTag = 'svg-ext-gauge_semaphore';
     static LabelTag = 'HtmlSemaphore';

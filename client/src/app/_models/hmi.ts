@@ -1,3 +1,4 @@
+import { GridType } from 'angular-gridster2';
 import { Device, DeviceType, Tag } from './device';
 
 export class Hmi {
@@ -168,6 +169,7 @@ export class DocProfile {
     bkcolor = '#ffffffff';
     margin = 10;
     align = DocAlignType.topCenter;
+    gridType: GridType = GridType.Fixed;
 }
 
 export enum DocAlignType {
@@ -366,10 +368,10 @@ export interface GaugeIframeProperty {
 export interface GaugePanelProperty {
     viewName: string;
     variableId: string;
-    scaleMode: PanelPropertyScaleModeType;
+    scaleMode: PropertyScaleModeType;
 }
 
-export enum PanelPropertyScaleModeType {
+export enum PropertyScaleModeType {
     none = 'none',
     contain = 'contain',
     stretch = 'stretch'
@@ -496,7 +498,6 @@ export class VariableRange {
 }
 
 export class Alarm extends Tag {
-    id: string;
     group: string;
     device: string;
 }
@@ -559,7 +560,7 @@ export interface DictionaryGaugeSettings {
     [x: string]: GaugeSettings;
 }
 
-interface DictionaryVariables {
+export interface DictionaryVariables {
     [id: string]: Variable;
 }
 
@@ -580,6 +581,8 @@ export class CardWidget {
     data: string;
     type: string;
     zoom = 1;
+    scaleMode: PropertyScaleModeType;
+
     constructor(type: string, data: string) {
         this.type = type;
         this.data = data;
@@ -587,10 +590,10 @@ export class CardWidget {
 }
 
 export enum CardWidgetType {
-    view = 'card.widget-view',
-    alarms = 'card.widget-alarms',
-    iframe = 'card.widget-iframe',
-    table = 'card.widget-table',
+    view = 'view',
+    alarms = 'alarms',
+    iframe = 'iframe',
+    table = 'table',
 }
 
 export enum LinkType {

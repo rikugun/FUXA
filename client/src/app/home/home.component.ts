@@ -1,7 +1,7 @@
 /* eslint-disable @angular-eslint/component-class-suffix */
 /* eslint-disable @angular-eslint/component-selector */
 import { Component, Inject, OnInit, AfterViewInit, OnDestroy, ViewChild, ChangeDetectorRef, ElementRef } from '@angular/core';
-import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog, MatLegacyDialogRef as MatDialogRef, MAT_LEGACY_DIALOG_DATA as MAT_DIALOG_DATA } from '@angular/material/legacy-dialog';
 import { combineLatest, interval, merge, Observable, of, Subject, Subscription, timer } from 'rxjs';
 import { MatSidenav } from '@angular/material/sidenav';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -206,6 +206,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.changeDetector.detectChanges();
                 this.setBackground();
                 if (this.homeView.type !== this.cardViewType) {
+                    this.checkZoom();
                     this.fuxaview.hmi.layout = this.hmi.layout;
                     this.fuxaview.loadHmi(this.homeView);
                 } else if (this.cardsview) {
@@ -403,18 +404,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
                     this.changeDetector.detectChanges();
                     this.loadHeaderItems();
                 }
-                if (this.hmi.layout.zoom && ZoomModeType[this.hmi.layout.zoom] === ZoomModeType.enabled) {
-                    setTimeout(() => {
-                        let element: HTMLElement = document.querySelector('#home');
-                        if (element && panzoom) {
-                            panzoom(element, {
-                                bounds: true,
-                                boundsPadding: 0.05,
-                            });
-                        }
-                        this.container.nativeElement.style.overflow = 'hidden';
-                    }, 1000);
-                }
+                this.checkZoom();
             }
         }
         if (this.homeView && this.fuxaview) {
@@ -425,6 +415,21 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.securityEnabled = this.projectService.isSecurityEnabled();
         if (this.securityEnabled && !this.isLoggedIn() && this.hmi.layout.loginonstart) {
             this.onLogin();
+        }
+    }
+
+    private checkZoom() {
+        if (this.hmi.layout?.zoom && ZoomModeType[this.hmi.layout.zoom] === ZoomModeType.enabled) {
+            setTimeout(() => {
+                let element: HTMLElement = document.querySelector('#home');
+                if (element && panzoom) {
+                    panzoom(element, {
+                        bounds: true,
+                        boundsPadding: 0.05,
+                    });
+                }
+                this.container.nativeElement.style.overflow = 'hidden';
+            }, 1000);
         }
     }
 

@@ -58,10 +58,6 @@
     font-size: 11px;
 }
 
-.svg-workarea-leftbar-h:active {
-    /* margin-bottom: 4px; */
-}
-
 /* .mat-expansion-panel-content {
   background-color: rgb(53, 3, 3);
 } */
@@ -303,8 +299,8 @@
 /* left panel */
 /* --------------- */
 .view-panel {
-    max-height: 400px;
     overflow: auto;
+    cursor: s-resize;
 }
 .leftbar-edit-btn {
     margin-top: 2px;
@@ -321,6 +317,9 @@
     background-color: var(--toolboxPanelBackgroung);
     color: var(--toolboxColor);
     overflow: auto;
+}
+
+.leftbar-panel.h200 {
     max-height: 200px;
 }
 

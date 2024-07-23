@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { GaugeBaseComponent } from '../../gauge-base/gauge-base.component';
 import { GaugeSettings, Variable, GaugeStatus, GaugeAction, Event, GaugeActionsType, InputOptionType, InputTimeFormatType, InputConvertionType } from '../../../_models/hmi';
 import { Utils } from '../../../_helpers/utils';
@@ -13,7 +13,6 @@ declare var SVG: any;
 })
 export class HtmlInputComponent extends GaugeBaseComponent {
 
-    @Input() data: any;
 
     static TypeTag = 'svg-ext-html_input';
     static LabelTag = 'HtmlInput';

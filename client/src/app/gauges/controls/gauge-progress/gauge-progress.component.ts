@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { GaugeBaseComponent } from '../../gauge-base/gauge-base.component';
 import { GaugeSettings, Variable, GaugeRangeProperty, GaugeStatus, GaugeProperty } from '../../../_models/hmi';
 import { Utils } from '../../../_helpers/utils';
@@ -11,7 +11,6 @@ import { GaugeDialogType } from '../../gauge-property/gauge-property.component';
 })
 export class GaugeProgressComponent extends GaugeBaseComponent {
 
-    @Input() data: any;
 
     static TypeTag = 'svg-ext-gauge_progress';
     static LabelTag = 'HtmlProgress';
