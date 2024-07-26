@@ -31,7 +31,8 @@
             ],
             "scripts": [
               "node_modules/uplot/dist/uPlot.iife.min.js",
-              "src/assets/lib/uplot/placement.min.js"
+              "src/assets/lib/uplot/placement.min.js",
+              "src/assets/lib/jessibuca/jessibuca.js"
             ],
             "aot": false,
             "vendorChunk": true,
@@ -54,8 +55,6 @@
               "socket.io-client",
                 "eventemitter3",
                 "delegate",
-                "flv.js",
-                "danmu.js",
                 "downloadjs"
             ]
           },

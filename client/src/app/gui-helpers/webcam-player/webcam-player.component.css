@@ -3,3 +3,16 @@
     min-width: 600px;
     /*min-height: 30px;*/
 }
+
+#container {
+    background: rgba(13, 14, 27, 0.7);
+    width: 640px;
+    height: 398px;
+}
+
+@media (max-width: 720px) {
+    #container {
+        width: 90vw;
+        height: 52.7vw;
+    }
+}

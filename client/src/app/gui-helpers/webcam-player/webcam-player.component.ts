@@ -1,28 +1,25 @@
-import {Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild} from '@angular/core';
-import Player from 'xgplayer';
-import LivePreset from 'xgplayer/es/presets/live';
-import FlvJsPlugin from 'xgplayer-flv.js';
+import {Component, ElementRef, EventEmitter, Input, Output, ViewChild, AfterViewInit} from '@angular/core';
 import { WebcamPlayerDialogData } from './webcam-player-dialog/webcam-player-dialog.component';
 import { Utils } from '../../_helpers/utils';
 import { HmiService } from '../../_services/hmi.service';
+import Jessibuca from '../../../assets/lib/jessibuca/jessibuca';
 
 @Component({
     selector: 'app-webcam-player',
     templateUrl: './webcam-player.component.html',
     styleUrls: ['./webcam-player.component.css']
 })
-export class WebcamPlayerComponent implements OnInit {
+export class WebcamPlayerComponent implements  AfterViewInit {
 
     @ViewChild('xgplayer', {static: true}) xgplayerRef: ElementRef;
     @Input() data: WebcamPlayerDialogData;
     @Output() onclose = new EventEmitter();
-    player: Player;
+    player: any;
 
 
     constructor(private hmiService: HmiService) {
     }
-
-    ngOnInit(): void {
+    ngAfterViewInit(): void {
         let url = this.data.ga.property.variableValue;
         if (this.data.ga.property.variableId){
             let variable = this.hmiService.getMappedVariable(this.data.ga.property.variableId, false);
@@ -30,18 +27,25 @@ export class WebcamPlayerComponent implements OnInit {
                 url = '' + variable.value;
             }
         }
-        let plugins: any = [];
-        //add http-flv support
-        if (new URL(url).pathname.endsWith('flv')) {
-            plugins.push(FlvJsPlugin);
-        }
-        this.player = new Player({
-            el: this.xgplayerRef.nativeElement,
-            url,
-            autoplay: true,
-            presets: [LivePreset],
-            plugins
+
+        this.player = this.player = new Jessibuca({
+            container: this.xgplayerRef.nativeElement,
+            videoBuffer: 0.2, // 缓存时长
+            isResize: false,
+            loadingText: '加载中',
+            debug: true,
+            showBandwidth: true, // 显示网速
+            operateBtns: {
+                fullscreen: true,
+                screenshot: true,
+                play: true,
+                audio: true,
+            },
+            forceNoOffscreen: true,
+            isNotMute: false,
+            decoder: 'assets/lib/jessibuca/decoder.js'
         });
+        this.player.play(url);
     }
 
     private onClose($event) {
