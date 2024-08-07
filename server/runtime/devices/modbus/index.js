@@ -427,19 +427,28 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 var port = 502;
                 var addr = data.property.address;
                 if (data.property.address.indexOf(':') !== -1) {
-                    var addr = data.property.address.substring(0, data.property.address.indexOf(':'));
+                    addr = data.property.address.substring(0, data.property.address.indexOf(':'));
                     var temp = data.property.address.substring(data.property.address.indexOf(':') + 1);
                     port = parseInt(temp);
                 }
                 //reuse socket
-                var socket;
                 if(data.property.socketReuse) {
                     var socket
                     if (runtime.socketPool.has(data.property.address)) {
                         socket = runtime.socketPool.get(data.property.address)
                     } else {
                         socket = new net.Socket()
-                        runtime.socketPool.put(data.property.address, socket)
+                        runtime.socketPool.set(data.property.address, socket)
+                    }
+                    var openFlag = socket.readyState === "opening" || socket.readyState === "open";
+                    if(!openFlag){
+                        socket.connect({
+                            // Default options
+                            ...{
+                                host: addr,
+                                port: port
+                            },
+                        })
                     }
                 }
                 if (data.property.connectionOption === ModbusOptionType.UdpPort) {
