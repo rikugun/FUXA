@@ -12,7 +12,7 @@ import {
     ViewChild,
     ViewContainerRef
 } from '@angular/core';
-import { Subject, Subscription } from 'rxjs';
+import { Subject, Subscription, take } from 'rxjs';
 import { ChangeDetectorRef } from '@angular/core';
 
 import { Event, GaugeEvent, GaugeEventActionType, GaugeSettings, GaugeProperty, GaugeEventType, GaugeRangeProperty, GaugeStatus, Hmi, View, ViewType, Variable, ZoomModeType, InputOptionType, DocAlignType, DictionaryGaugeSettings } from '../_models/hmi';
@@ -543,7 +543,11 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                         }
                         if (htmlevent.ga?.property?.options?.type !== InputOptionType.datetime && htmlevent.ga?.property?.options?.type !== InputOptionType.date &&
                             htmlevent.ga?.property?.options?.type !== InputOptionType.time) {
-                            self.touchKeyboard.openPanel(eleRef);
+                            self.touchKeyboard.openPanel(eleRef).pipe(
+                                take(1)
+                            ).subscribe(() => {
+                                htmlevent.dom.blur();
+                            });
                         }
                         // if(htmlevent.ga.property){
                         //     let unit = HtmlInputComponent.getUnit(htmlevent.ga.property, new GaugeStatus());
@@ -560,7 +564,6 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                     // Update variable value in case it has changed while input had focus
                     let variables = self.gaugesManager.getBindSignalsValue(htmlevent.ga);
                     let svgeles = FuxaViewComponent.getSvgElements(htmlevent.ga.id);
-
                     if (variables.length && svgeles.length) {
                         if (htmlevent.ga?.type !== HtmlInputComponent.TypeTag && !HtmlInputComponent.InputDateTimeType.includes(htmlevent.ga?.property.options?.type)) {
                             self.gaugesManager.processValue(htmlevent.ga, svgeles[0], variables[0], new GaugeStatus());
@@ -568,6 +571,7 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                     }
                     // Remove any error message when input is blured
                     htmlevent.dom.setCustomValidity('');
+                    self.checkRestoreValue(htmlevent);
                 };
 
                 htmlevent.dom.oninput = function(ev){
@@ -586,6 +590,19 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                     self.eventForScript(events, htmlevent.value);
                 }
             };
+        }
+    }
+
+    private checkRestoreValue(htmlevent: Event) {
+        if (htmlevent.ga?.property?.options?.updated) {
+            //ToDo there is definitely a better way
+            setTimeout(() => {
+                const gaugeStatus = this.getGaugeStatus(htmlevent.ga);
+                const currentInputValue = gaugeStatus?.variablesValue[htmlevent.ga?.property?.variableId];
+                if (!Utils.isNullOrUndefined(currentInputValue)) {
+                    htmlevent.dom.value = currentInputValue;
+                }
+            }, 1000);
         }
     }
 
