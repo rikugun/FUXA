@@ -40,6 +40,7 @@ jobs:
         with:
           context: .
           push: true
+          file: Dockerfile-sm
           platforms: linux/amd64
           tags: starmetal/${{ env.app }}:${{ env.version }}
 
