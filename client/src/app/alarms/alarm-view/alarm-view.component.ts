@@ -168,6 +168,7 @@ export class AlarmViewComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     onClose() {
+        this.onShowAlarms();
         this.currentShowMode = 'collapse';
         this.showMode.emit('close');
         this.stopAskAlarmsValues();
@@ -183,10 +184,10 @@ export class AlarmViewComponent implements OnInit, AfterViewInit, OnDestroy {
         this.showType = AlarmShowType.history;
         this.displayColumns = this.historyColumns;
         let query: AlarmQuery = <AlarmQuery>{
-            start: new Date(this.dateRange.value.startDate),
-            end: new Date(this.dateRange.value.endDate)
+            start: new Date(new Date(this.dateRange.value.startDate).setHours(0, 0, 0, 0)),
+            end: new Date(new Date(this.dateRange.value.endDate).setHours(23, 59, 59, 999))
         };
-		this.alarmsLoading = true;
+        this.alarmsLoading = true;
         this.hmiService.getAlarmsHistory(query).pipe(
             delay(1000)
         ).subscribe(result => {
