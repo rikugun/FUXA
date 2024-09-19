@@ -1,10 +1,10 @@
 
 module.exports = {
     // Version to manage update
-    version: 1.1,
-    
+    version: require('./package').version,
+
     // Standard language (editor)
-    language: 'en',
+    language: 'zh-cn',
 
     // The tcp port that the FUXA web server is listening on
     uiPort: process.env.PORT || 1881,
@@ -14,11 +14,11 @@ module.exports = {
     logDir: '_logs',
 
     // Used to storage Database like DAQ, User
-    // Default: '_db'    
+    // Default: '_db'
     dbDir: '_db',
 
     // DAQ Enabled
-    // Default: true    
+    // Default: true
     daqEnabled: true,
 
     // DAQ DB to Tokenizer the file and save in archive
@@ -62,5 +62,5 @@ module.exports = {
 
     // Enable GPIO in Raspberry
     // To enable only by Raspberry Host
-    
+
 }
