@@ -1,7 +1,7 @@
 
 module.exports = {
     // Version to manage update
-    version: require('../client/package').version,
+    version: require('./package').version,
 
     // Standard language (editor)
     language: 'zh-cn',
