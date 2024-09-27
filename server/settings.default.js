@@ -25,6 +25,11 @@ module.exports = {
     // Default: 24 Hours (1 Day), 0 is disabled only 1 DB file
     daqTokenizer: 24,
 
+    // Tags value to be broadcast,
+    // if false will be send to frontend only the tags bind to current visualized views
+    // if true all configured tags will be send to frontend
+    broadcastAll: false,
+
     // By default, server accepts connections on all IPv4 interfaces.
     // To listen on all IPv6 addresses, set uiHost to "::",
     // The following property can be used to listen on a specific interface. For
