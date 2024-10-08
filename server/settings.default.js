@@ -1,10 +1,10 @@
 
 module.exports = {
     // Version to manage update
-    version: 1.1,
+    version: '1.2.0-1909',
 
     // Standard language (editor)
-    language: 'en',
+    language: 'zh-cn',
 
     // The tcp port that the FUXA web server is listening on
     uiPort: process.env.PORT || 1881,
