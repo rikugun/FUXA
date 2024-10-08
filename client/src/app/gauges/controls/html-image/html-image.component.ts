@@ -44,6 +44,7 @@ export class HtmlImageComponent extends GaugeBaseComponent {
                     const svgElement = svgDocument.querySelector('svg');
                     const originSize = SvgUtils.getSvgSize(svgElement);
                     SvgUtils.resizeSvgNodes(svgImageContainer.parentElement.parentElement, originSize);
+                    svgImageContainer.parentElement?.parentElement?.removeAttribute('stroke');
                     svgElement.setAttribute('width', originSize.width.toString());
                     svgElement.setAttribute('height', originSize.height.toString());
                     if (!gaugeSettings.property.svgContent) {
@@ -189,7 +190,7 @@ export class HtmlImageComponent extends GaugeBaseComponent {
     static bindEvents(ga: GaugeSettings, callback?: any): Event {
         if (ga.property.type === HtmlImageComponent.propertyWidgetType && ga.property.scriptContent && ga.property.varsToBind?.length) {
             const scriptContent = ga.property.scriptContent;
-            if (window[scriptContent.moduleId]['postValue']) {
+            if (window[scriptContent.moduleId]?.['postValue']) {
                 window[scriptContent.moduleId]['postValue'] = (varName, value) => {
                     const widgetVar = <WidgetPropertyVariable> ga.property.varsToBind?.find((varToBind: WidgetPropertyVariable) => varToBind.name === varName);
                     if (widgetVar) {
@@ -208,5 +209,9 @@ export class HtmlImageComponent extends GaugeBaseComponent {
             }
         }
         return null;
+    }
+
+    static detectChange(gab: GaugeSettings, isview: boolean): HTMLElement{
+        return HtmlImageComponent.initElement(gab, isview);
     }
 }
