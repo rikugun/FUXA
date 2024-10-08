@@ -5,7 +5,7 @@ import { MatLegacyDialog as MatDialog, MatLegacyDialogRef as MatDialogRef, MAT_L
 import { MatDrawer } from '@angular/material/sidenav';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription, switchMap, takeUntil } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 import { ProjectService, SaveMode } from '../_services/project.service';
@@ -37,6 +37,8 @@ import { IElementPreview } from './svg-selector/svg-selector.component';
 import { TagIdRef, TagsIdsConfigComponent, TagsIdsData } from './tags-ids-config/tags-ids-config.component';
 import { UploadFile } from '../_models/project';
 import { ViewPropertyComponent, ViewPropertyType } from './view-property/view-property.component';
+import { HtmlImageComponent } from '../gauges/controls/html-image/html-image.component';
+import { LibWidgetsService } from '../resources/lib-widgets/lib-widgets.service';
 
 declare var Gauge: any;
 
@@ -93,7 +95,8 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         panelGeneral: true,
         panelC: true,
         panelD: true,
-        panelS: true
+        panelS: true,
+        panelWidgets: true,
     };
     panelPropertyIdOpenState: boolean;
     panelPropertyTransformOpenState: boolean;
@@ -111,6 +114,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private subscriptionSave: Subscription;
     private subscriptionLoad: Subscription;
+    private destroy$ = new Subject<void>();
 
     constructor(private projectService: ProjectService,
         private winRef: WindowRef,
@@ -120,6 +124,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         public gaugesManager: GaugesManager,
         private viewContainerRef: ViewContainerRef,
         private resolver: ComponentFactoryResolver,
+        private libWidgetsService: LibWidgetsService,
         private mdIconRegistry: MatIconRegistry, private sanitizer: DomSanitizer) {
         mdIconRegistry.addSvgIcon('group', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/group.svg'));
         mdIconRegistry.addSvgIcon('to_bottom', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/to-bottom.svg'));
@@ -145,6 +150,19 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         } catch (err) {
             console.error(err);
         }
+
+        this.libWidgetsService.svgWidgetSelected$.pipe(
+            switchMap(widgetPath =>
+                fetch(widgetPath).then(response =>
+                    response.text().then(content => ({ content, widgetPath }))
+                )
+            ),
+            takeUntil(this.destroy$)
+        ).subscribe(({ content, widgetPath }) => {
+            localStorage.setItem(widgetPath, content);
+            this.ctrlInitParams = widgetPath;
+            this.setMode('own_ctrl-image');
+        });
     }
 
     /**
@@ -177,6 +195,8 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
             console.error(e);
         }
         this.onSaveProject();
+        this.destroy$.next();
+        this.destroy$.complete();
     }
     //#endregion
 
@@ -390,7 +410,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
      * search gauge settings on all views items, if not exist create void settings from GaugesManager
      * @param ele gauge element
      */
-    private searchGaugeSettings(ele) {
+    private searchGaugeSettings(ele): GaugeSettings {
         if (ele) {
             if (this.currentView) {
                 if (this.currentView.items[ele.id]) {
@@ -684,7 +704,19 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                             }
                         }
                     } else {
-                        console.error('Between copied and pasted there are inconsistent elements!');
+                        let copyGaugeSettings = this.searchGaugeSettings(copiedIdsAndTypes[i]);
+                        if (copyGaugeSettings.property?.type === HtmlImageComponent.propertyWidgetType) {
+                            let gaugeSettingsDest: GaugeSettings = this.gaugesManager.createSettings(pastedIdsAndTypes[i].id, pastedIdsAndTypes[i].type);
+                            gaugeSettingsDest.name = Utils.getNextName(GaugesManager.getPrefixGaugeName(pastedIdsAndTypes[i].type), names);
+                            const svgGuid = Utils.getShortGUID('', '_');
+                            gaugeSettingsDest.property = Utils.replaceStringInObject(copyGaugeSettings.property,
+                                                                                     copyGaugeSettings.property.svgGuid,
+                                                                                     svgGuid);
+                            this.setGaugeSettings(gaugeSettingsDest);
+                            this.checkGaugeAdded(gaugeSettingsDest);
+                        } else {
+                            console.error('Between copied and pasted there are inconsistent elements!');
+                        }
                     }
                 }
                 this.checkSvgElementsMap(true);
@@ -784,15 +816,16 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
      */
     onSetImage(event) {
         if (event.target.files) {
+            let filename = event.target.files[0].name;
             this.imagefile = 'assets/images/' + event.target.files[0].name;
+            let fileToUpload = { type: filename.split('.').pop().toLowerCase(), name: filename.split('/').pop(), data: null };
             let self = this;
-            if (this.imagefile.split('.').pop().toLowerCase() === 'svg') {
+            if (fileToUpload.type === 'svg') {
                 let reader = new FileReader();
                 reader.onloadend = function(e: any) {
-                    if (self.winRef.nativeWindow.svgEditor.setSvgImageToAdd) {
-                        self.winRef.nativeWindow.svgEditor.setSvgImageToAdd(e.target.result);
-                    }
-                    self.setMode('svg-image');
+                    localStorage.setItem(fileToUpload.name, reader.result.toString());
+                    self.ctrlInitParams = fileToUpload.name;
+                    self.setMode('own_ctrl-image');
                 };
                 reader.readAsText(event.target.files[0]);
             } else {
@@ -1499,4 +1532,5 @@ interface PanelsStateType {
     panelC?: boolean;
     panelD?: boolean;
     panelS?: boolean;
+    panelWidgets?: boolean;
 }
