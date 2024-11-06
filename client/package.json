@@ -16,7 +16,8 @@
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "marscode": "ng serve -c marscode"
   },
   "dependencies": {
     "@angular/animations": "^15.2.10",

@@ -124,7 +124,30 @@
                   "with": "src/environments/environment.client.ts"
                 }
               ]
-            }
+            },
+            "marscode": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.marscode.ts"
+                }
+              ],
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": true,
+              "namedChunks": false,
+              "aot": true,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true
+            },
+            "marscodedebug": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.marscode.ts"
+                }
+              ]}
           },
           "defaultConfiguration": ""
         },
@@ -143,6 +166,10 @@
             },
             "demo": {
               "browserTarget": "FUXA:build:demodebug"
+            },
+            "marscode": {
+              "browserTarget": "FUXA:build:marscodedebug",
+              "disableHostCheck":true
             }
           }
         },

@@ -8,11 +8,20 @@
         "name": "Server & Client",
         "configurations": [
             "Server Process",
-            "Client Chrome localhost"
+            "Run Client MarsCode"
         ]
     }
   ],  
   "configurations": [
+    {
+      "command": "npm run marscode",
+      "name": "Run Client MarsCode",
+      "localRoot": "${workspaceFolder}/client",
+      "remoteRoot": "${workspaceFolder}/client",
+      "request": "launch",
+      "type": "node-terminal",
+      "cwd":"${workspaceFolder}/client"
+    },
     {
       "type": "node",
       "request": "launch",
@@ -22,25 +31,8 @@
       "program": "${workspaceRoot}/server/main.js",
       "args": [
         "."
-      ]
-    },
-    {
-      "name": "Client Chrome localhost",
-      "type": "chrome",
-      "request": "launch",
-      "url": "http://localhost:4200/#",
-      "webRoot": "${workspaceFolder}/client/"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Server Env-Process",
-      "localRoot": "${workspaceFolder}/server",
-      "remoteRoot": "${workspaceFolder}/server",
-      "program": "${workspaceRoot}/server/main.js",
-      "args": [
-        "--env=test"
-      ]
-    },
+      ],
+      "cwd":"${workspaceFolder}/server"
+    }
   ]
 }
