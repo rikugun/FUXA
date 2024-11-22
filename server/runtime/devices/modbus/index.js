@@ -9,7 +9,7 @@ const utils = require('../../utils');
 const deviceUtils = require('../device-utils');
 const net = require("net");
 const TOKEN_LIMIT = 100;
-const Mutex = require("async-mutex").Mutex;
+const mutex = require('async-mutex');
 
 function MODBUSclient(_data, _logger, _events, _runtime) {
     var memory = {};                        // Loaded Signal grouped by memory { memory index, start, size, ... }
@@ -139,7 +139,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(parseInt(tokenizedAddress.address), memory[memaddr].Start, memory[memaddr].MaxSize, Object.values(memory[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        logger.error(`'${data.name}' _readMemory error! ${JSON.stringify(err)}`);
                     }
                 }
             } else {
@@ -148,7 +148,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(getMemoryAddress(parseInt(memaddr), false), mixItemsMap[memaddr].Start, mixItemsMap[memaddr].MaxSize, Object.values(mixItemsMap[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        logger.error(`'${data.name}' _readMemory error! ${JSON.stringify(err)}`);
                     }
                 }
             }
@@ -467,7 +467,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         runtime.socketPool.set(data.property.address, socket);
                         //init read mutex
                         if (data.property.socketReuse === ModbusReuseModeType.ReuseSerial) {
-                            runtime.socketMutex.set(data.property.address, new Mutex())
+                            runtime.socketMutex.set(data.property.address, mutex.withTimeout(new mutex.Mutex(),runtime.modbusTCPSerialTimeout || 1000))
                         }
                     }
                     var openFlag = socket.readyState === "opening" || socket.readyState === "open";
