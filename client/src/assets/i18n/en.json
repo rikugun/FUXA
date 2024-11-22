@@ -427,6 +427,7 @@
     "table.property-type-history": "History table",
     "table.property-type-alarms": "Alarms table",
     "table.property-type-alarms-history": "Alarms History table",
+    "table.property-type-reports": "Reports table",
     "table.property-grid-color": "Grid color",
     "table.property-cols": "Columns",
     "table.property-rows": "Rows",
@@ -467,10 +468,20 @@
 
     "table.alarms-title": "Table Alarms",
     "table.alarms-history-title": "Table Alarms History",
-    "table.alarm-column": "Alarms Column",
+    "table.alarm-columns": "Alarms Columns",
     "table.alarm-filter": "Alarms Filter",
     "table.alarm-priority": "Priority",
     "table.alarm-tags": "Tags",
+
+    "table.reports-title": "Table Reports",
+    "table.report-columns": "Reports Columns",
+    "table.report-view-name": "Name",
+    "table.report-view-ontime": "Created",
+    "table.report-view-download": "Download",
+    "table.report-view-delete": "Delete",
+    "table.report-filter": "Reports Filter",
+    "table.report-filter-name": "Name",
+    "table.report-filter-count": "Max.",
 
     "editor.view-svg": "Canvas/SVG",
     "editor.view-cards": "Multi views container",
@@ -707,6 +718,7 @@
     "shapes.event-ontogglevalue": "Toggle Value",
     "shapes.event-onsetinput": "Set from Input",
     "shapes.event-onclose": "Close",
+    "shapes.event-onopen": "Open",
     "shapes.event-onrunscript": "Run Script",
     "shapes.event-setvalue-set": "set",
     "shapes.event-setvalue-add": "increase",
@@ -1037,6 +1049,9 @@
 
     "gauges.property-update-enabled": "Enable update",
     "gauges.property-update-esc": "ESC update",
+    "gauges.property-input-esc-action": "Action on leave",
+    "gauges.property-action-esc-update": "Update (Refresh)",
+    "gauges.property-action-esc-enter": "Confirm (Enter)",
     "gauges.property-select-content-on-click": "Select content on click",
     "gauges.property-numeric-enabled": "Only number",
     "gauges.property-format-digits": "Format digits",
@@ -1137,6 +1152,7 @@
     "alarm.action-popup": "Show Popup",
     "alarm.action-onsetview": "Set View",
     "alarm.action-onsetvalue": "Set Value",
+    "alarm.action-onRunScript": "Run Script",
     "alarm.action-sendMsg": "Send Message",
     "alarm.property-action-type": "Action type",
     "alarm.property-action-value": "Value to set",
@@ -1252,6 +1268,9 @@
     "script.sys-fnc-getHistoricalTag-text": "$getHistoricalTags(TagIds array, from msec., to msec.)",
     "script.sys-fnc-getHistoricalTag-tooltip":"get historical tags by milliseconds range: $getHistoricalTags([TagIds] as array, from as number, to as number)",
     "script.sys-fnc-getHistoricalTag-params":"'Tag Ids array', 'From msec.', 'To msec.'",
+    "script.sys-fnc-sendMessage-text": "$sendMessage(address, subject, message)",
+    "script.sys-fnc-sendMessage-tooltip": "System function to send Message (Mail): $sendMessage(address as string, subject as string, message as string)",
+    "script.sys-fnc-sendMessage-params": "'address', 'subject', 'message'",
 
     "script.template-chart-data-text": "Customized chart data",
     "script.template-chart-data-tooltip": "Code template of customized chart data to return",
@@ -1510,5 +1529,6 @@
     "msg.device-tags-request-result": "Load {{value}} of {{current}}",
     "msg.chart-with-script": "The defined script receives the list of chart lines as a parameter and then returns the completed list with the data. Code sample in script 'Templates'",
     "msg.script-name-exist": "Script name exist!",
-    "msg.view-name-exist": "View name exist!"
+    "msg.view-name-exist": "View name exist!",
+    "msg.file-remove": "Would you like to remove '{{value}}'?"
 }

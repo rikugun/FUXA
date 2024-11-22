@@ -24,6 +24,8 @@ export class View {
     svgcontent = '';
     /** Type of view SVG/CARDS */
     type: ViewType;
+    /** Property with events of view like Open or Close */
+    property: ViewProperty;
 
     constructor(id?: string, type?: ViewType, name?: string) {
         this.id = id;
@@ -194,6 +196,9 @@ export class GaugeSettings {
     }
 }
 
+export class ViewProperty {
+    events: GaugeEvent[] = [];
+}
 export class GaugeProperty {
     variableId: string;
     variableValue: string;
@@ -224,6 +229,7 @@ export interface InputOptionsProperty {
     convertion?: InputConvertionType;
     updatedEsc?: boolean;
     selectOnClick?: boolean;
+    actionOnEsc?: InputActionEscType;
 }
 
 export enum InputOptionType {
@@ -245,6 +251,11 @@ export enum InputConvertionType {
     string = 'string',
 }
 
+export enum InputActionEscType {
+    update = 'update',
+    enter = 'enter'
+}
+
 export interface IPropertyVariable {
     /** Tag id */
     variableId: string;
@@ -256,6 +267,13 @@ export interface IPropertyVariable {
     variableRaw: Tag;
 }
 export class GaugeEvent {
+    type: string;
+    action: string;
+    actparam: string;
+    actoptions = {};
+}
+
+export class ViewEvent {
     type: string;
     action: string;
     actparam: string;
@@ -351,6 +369,15 @@ export enum GaugeEventActionType {
     onMonitor = 'shapes.event-onmonitor',
 }
 
+export enum ViewEventType {
+    onopen = 'shapes.event-onopen',
+    onclose = 'shapes.event-onclose'
+}
+
+export enum ViewEventActionType {
+    onRunScript = 'shapes.event-onrunscript',
+}
+
 export enum GaugeEventRelativeFromType {
     window = 'window',
     mouse = 'mouse'
@@ -414,6 +441,7 @@ export enum TableType {
     history = 'history',
     alarms = 'alarms',
     alarmsHistory = 'alarmsHistory',
+    reports = 'reports',
 }
 
 export interface TableOptions {
@@ -450,13 +478,15 @@ export interface TableOptions {
     columns?: TableColumn[];
     alarmsColumns?: TableColumn[];
     alarmFilter: TableFilter;
+    reportsColumns?: TableColumn[];
+    reportFilter: TableFilter;
     rows?: TableRow[];
 }
 
 export interface TableFilter {
     filterA: string[];
-    filterB: string[];
-    filterC: string[];
+    filterB?: string[];
+    filterC?: string[];
 }
 
 export enum TableCellType {
@@ -565,6 +595,7 @@ export class DaqQuery {
     to: any;
     event?: string;
     sids: string[];
+    chunked?: boolean;
 }
 
 export interface DaqValue {
@@ -576,6 +607,12 @@ export interface DaqValue {
 export class DaqResult {
     gid: string;
     result: any;
+    chunk?: DaqChunkType;
+}
+
+export interface DaqChunkType {
+    index: number;
+    of: number;
 }
 
 export class HelpData {

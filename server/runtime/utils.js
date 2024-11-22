@@ -9,7 +9,7 @@ var utils = module.exports = {
     domStringSplitter: function (src, tagsplitter, first) {
         var result = { before: '', tagcontent: '', after: '' };
         var tagStart = '<' + tagsplitter.toLowerCase();
-        var tagEnd = '</' + tagsplitter.toLowerCase(); 
+        var tagEnd = '</' + tagsplitter.toLowerCase();
         var text = src.toLowerCase();
         var start = text.indexOf(tagStart, first);
         var end = text.indexOf(tagEnd, start);
@@ -28,7 +28,11 @@ var utils = module.exports = {
             var temp  = '';
             while((pos = text.indexOf(tagStart, pos)) !== -1) {
                 pos += tagStart.length + 1;
-                temp += src.slice(0, pos) + attribute + ' ' + src.slice(pos);
+                if (text.indexOf('>') === tagStart.length) {
+                    temp += src.slice(0, pos - 1) + ' ' + attribute + ' >' + src.slice(pos);
+                } else {
+                    temp += src.slice(0, pos) + attribute + ' ' + src.slice(pos);
+                }
             }
             if (temp.length) {
                 result = temp;
@@ -70,7 +74,7 @@ var utils = module.exports = {
     },
 
     isEmptyObject: function (value) {
-        return value && Object.keys(value).length === 0 && value.constructor === Object;
+        return !value || (Object.keys(value).length === 0 && value.constructor === Object);
     },
 
     isObject(value) {
@@ -110,7 +114,7 @@ var utils = module.exports = {
         try {
             if (value) {
                 return JSON.parse(value);
-            }    
+            }
         } catch { }
     },
 
@@ -121,7 +125,7 @@ var utils = module.exports = {
                     obj1[key] = obj2[key];
                 }
             }
-        }    
+        }
         return obj1;
     },
 
@@ -230,10 +234,24 @@ var utils = module.exports = {
         return chunks;
     },
 
+    chunkTimeRange: (start, end, chunkSize) => {
+        const chunks = [];
+        let currentStart = start;
+        if (chunkSize < 1) {
+            return [{ start: start, end: end }];
+        }
+        while (currentStart < end) {
+            const currentEnd = Math.min(currentStart + chunkSize, end);
+            chunks.push({ start: currentStart, end: currentEnd });
+            currentStart = currentEnd;
+        }
+        return chunks;
+    },
+
     extractArray: function (object) {
         let index = 0;
         const array = [];
-        
+
         while (object[index] !== undefined) {
             array.push(object[index]);
             index++;

@@ -27,7 +27,7 @@ export class ScriptService {
 
     runScript(script: Script) {
         return new Observable((observer) => {
-            if (!script.mode || script.mode == ScriptMode.SERVER) {
+            if (!script.mode || script.mode === ScriptMode.SERVER) {
                 if (environment.serverEnabled) {
                     let header = new HttpHeaders({ 'Content-Type': 'application/json' });
                     let params = { script: script };
@@ -55,7 +55,7 @@ export class ScriptService {
                 });
                 try {
                     const code = `${parameterToAdd}${script.code}`;
-                    const asyncScript = `(async () => { ${this.addSysFunctions(code)} })();`;
+                    const asyncScript = `(async () => { ${this.addSysFunctions(code)} \n})();`;
                     const result = eval(asyncScript);
                     observer.next(result);
                 } catch (err) {
@@ -72,7 +72,7 @@ export class ScriptService {
             console.warn('TODO: Script with mode CLIENT not work with parameters.');
         }
         try {
-            const asyncScript = `(async () => { ${this.addSysFunctions(script.code)} })();`;
+            const asyncScript = `(async () => { ${this.addSysFunctions(script.code)} \n})();`;
             eval(asyncScript);
         } catch (err) {
             console.error(err);
@@ -93,6 +93,7 @@ export class ScriptService {
         code = code.replace(/\$invokeObject\(/g, 'this.$invokeObject(');
         code = code.replace(/\$runServerScript\(/g, 'this.$runServerScript(');
         code = code.replace(/\$getHistoricalTags\(/g, 'this.$getHistoricalTags(');
+        code = code.replace(/\$sendMessage\(/g, 'this.$sendMessage(');
         return code;
     }
 
@@ -166,5 +167,9 @@ export class ScriptService {
     public async $getHistoricalTags(tagIds: string[], fromDate: number, toDate: number) {
         const query: DaqQuery = { sids: tagIds, from: fromDate, to: toDate };
         return await lastValueFrom(this.hmiService.getDaqValues(query));
+    }
+
+    public async $sendMessage(to: string, subject: string, message: string) {
+        return await this.projectService.runSysFunctionSync('$sendMessage', [to, subject, message]);
     }
 }
