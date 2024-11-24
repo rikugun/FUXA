@@ -85,6 +85,6 @@ module.exports = {
     // To enable only by Raspberry Host
 
     //modbus TCP socket serial timeout in milliseconds
-    modbusTCPSerialTimeout: 1000,
+    modbusTCPSerialTimeout: 2000,
 
 }
