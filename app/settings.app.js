@@ -79,6 +79,7 @@ module.exports = {
     // Enable GPIO in Raspberry
     // To enable only by Raspberry Host
 
+    modbusTimeout: 3000,
     //modbus TCP socket serial timeout in milliseconds
     modbusTCPSerialTimeout: 2000,
 }
