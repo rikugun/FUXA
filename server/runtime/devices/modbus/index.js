@@ -117,8 +117,11 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     this.polling = async function () {
         let socketRelease;
         try {
-            if (data.property.socketReuse && runtime.socketMutex.has(data.property.address)) {
-                socketRelease = await runtime.socketMutex.get(data.property.address).acquire();
+            if (type === ModbusTypes.TCP && data.property.socketReuse) {
+                client.setID(data.property.slaveid);
+                if(runtime.socketMutex.has(data.property.address)) {
+                    socketRelease = await runtime.socketMutex.get(data.property.address).acquire();
+                }
             }
             await this._polling()
         } catch (err) {
@@ -139,7 +142,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(parseInt(tokenizedAddress.address), memory[memaddr].Start, memory[memaddr].MaxSize, Object.values(memory[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${JSON.stringify(err)}`);
+                        logger.error(`'${data.name}'-${client.getID()} _readMemory error! ${JSON.stringify(err)}`);
                     }
                 }
             } else {
@@ -148,7 +151,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(getMemoryAddress(parseInt(memaddr), false), mixItemsMap[memaddr].Start, mixItemsMap[memaddr].MaxSize, Object.values(mixItemsMap[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${JSON.stringify(err)}`);
+                        logger.error(`'${data.name}'-${client.getID()} _readMemory error! ${JSON.stringify(err)}`);
                     }
                 }
             }
@@ -358,8 +361,11 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             }
             let socketRelease;
             try {
-                if (type === ModbusTypes.TCP && data.property.socketReuse && runtime.socketMutex.has(data.property.address)) {
-                    socketRelease = await runtime.socketMutex.get(data.property.address).acquire();
+                if (type === ModbusTypes.TCP && data.property.socketReuse) {
+                    client.setID(data.property.slaveid);
+                    if(runtime.socketMutex.has(data.property.address)){
+                        socketRelease = await runtime.socketMutex.get(data.property.address).acquire();
+                    }
                 }
                 await _writeMemory(parseInt(memaddr), offset, val).then(result => {
                     logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
@@ -467,7 +473,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         runtime.socketPool.set(data.property.address, socket);
                         //init read mutex
                         if (data.property.socketReuse === ModbusReuseModeType.ReuseSerial) {
-                            runtime.socketMutex.set(data.property.address, mutex.withTimeout(new mutex.Mutex(),runtime.modbusTCPSerialTimeout || 1000))
+                            runtime.socketMutex.set(data.property.address, mutex.withTimeout(new mutex.Mutex(),runtime.modbusTCPSerialTimeout || 2000))
                         }
                     }
                     var openFlag = socket.readyState === "opening" || socket.readyState === "open";
