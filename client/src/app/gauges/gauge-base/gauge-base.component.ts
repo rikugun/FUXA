@@ -108,8 +108,8 @@ export class GaugeBaseComponent {
         }
         gaugeStatus.actionRef.type = act.type;
         if (toEnable) {
-            if (gaugeStatus.actionRef.timer && 
-                (GaugeBaseComponent.getBlinkActionId(act) == gaugeStatus.actionRef.spool.actId)) {
+            if (gaugeStatus.actionRef.timer &&
+                (GaugeBaseComponent.getBlinkActionId(act) === gaugeStatus.actionRef.spool?.actId)) {
                 return;
             }
             GaugeBaseComponent.clearAnimationTimer(gaugeStatus.actionRef);
@@ -207,6 +207,10 @@ export class GaugeBaseComponent {
             return (value & bitmask) | (source & ~bitmask);
         }
         return value;
+    }
+
+    static toggleBitmask(value: number, bitmask: number): number {
+        return value ^ bitmask;
     }
 
     static getBlinkActionId(act: GaugeAction) {

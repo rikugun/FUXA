@@ -466,7 +466,7 @@ function MQTTclient(_data, _logger, _events, _runtime) {
         var result = {};
         for (var id in data.tags) {
             if (!utils.isNullOrUndefined(data.tags[id].rawValue)) {
-                data.tags[id].value = await deviceUtils.tagValueCompose(data.tags[id].rawValue, varsValue[id] ? varsValue[id].value : null, data.tags[id]);
+                data.tags[id].value = await deviceUtils.tagValueCompose(data.tags[id].rawValue, varsValue[id] ? varsValue[id].value : null, data.tags[id], runtime);
                 if (this.addDaq && deviceUtils.tagDaqToSave(data.tags[id], timestamp)) {
                     result[id] = data.tags[id];
                 }
@@ -578,7 +578,6 @@ function MQTTclient(_data, _logger, _events, _runtime) {
                     client.publish(tags[key].address, JSON.stringify(obj), topicOptions);
                 } else if (tags[key].value !== undefined) {   // whitout payload
                     client.publish(tags[key].address, tags[key].value.toString(), topicOptions);
-                    tags[key].value = null;
                 }
             } catch (err) {
                 console.error(err);

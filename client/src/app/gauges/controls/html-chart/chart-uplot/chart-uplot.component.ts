@@ -1,6 +1,6 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, Input, Output, EventEmitter, ElementRef } from '@angular/core';
 
-import { ChartLegendMode, ChartRangeType, ChartRangeConverter, ChartLine, ChartViewType } from '../../../../_models/chart';
+import { ChartLegendMode, ChartRangeType, ChartRangeConverter, ChartLine, ChartViewType, ChartLineZone } from '../../../../_models/chart';
 import { NgxUplotComponent, NgxSeries, ChartOptions } from '../../../../gui-helpers/ngx-uplot/ngx-uplot.component';
 import { DaqQuery, DateFormatType, TimeFormatType, IDateRange, GaugeChartProperty, DaqChunkType } from '../../../../_models/hmi';
 import { Utils } from '../../../../_helpers/utils';
@@ -9,7 +9,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { DaterangeDialogComponent } from '../../../../gui-helpers/daterange-dialog/daterange-dialog.component';
 import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
 import { Subject, interval, timer } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { delay, takeUntil } from 'rxjs/operators';
 import { ScriptService } from '../../../../_services/script.service';
 import { ProjectService } from '../../../../_services/project.service';
 import { ScriptParam, ScriptParamType } from '../../../../_models/script';
@@ -178,6 +178,9 @@ export class ChartUplotComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     public resize(height?: number, width?: number) {
+        if (!this.chartPanel) {
+            return;
+        }
         let chart = this.chartPanel.nativeElement;
         if (!height && chart.offsetParent) {
             height = chart.offsetParent.clientHeight;
@@ -281,8 +284,31 @@ export class ChartUplotComponent implements OnInit, AfterViewInit, OnDestroy {
             } else {
                 serie.scale = '1';
             }
+            serie.spanGaps = Utils.isNullOrUndefined(line.spanGaps) ? true : line.spanGaps;
             if (line.fill) {
                 serie.fill = line.fill;
+            }
+            if (line.lineWidth) {
+                serie.width = line.lineWidth;
+            }
+
+            if (line.zones?.some(zone => zone.fill)) {
+                const zones = this.generateZones(line.zones, 'fill', line.fill);
+                if (zones) {
+                    serie.fill = (self, seriesIndex) => {
+                        let fill = this.nguplot.scaleGradient(self, line.yaxis, 1, zones, true);
+                        return  fill || line.fill;
+                    };
+                }
+            }
+            else if (line.fill) {
+                serie.fill = line.fill;
+            }
+            if (line.zones?.some(zone => zone.stroke)) {
+                const zones = this.generateZones(line.zones, 'stroke', line.color);
+                if (zones) {
+                    serie.stroke = (self, seriesIndex) => this.nguplot.scaleGradient(self, line.yaxis, 1, zones, true) || line.color;
+                }
             }
             serie.lineInterpolation = line.lineInterpolation;
             this.mapData[id] = <MapDataType>{
@@ -295,6 +321,24 @@ export class ChartUplotComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.isEditor) {
             this.nguplot.setSample();
         }
+    }
+
+    private generateZones(ranges: ChartLineZone[], attribute: string, baseColor: string): Zone[] {
+        const result: Zone[] = [];
+        const sortedRanges = ranges.sort((a, b) => a.min - b.min);
+        result.push([-Infinity, baseColor]);
+        sortedRanges.forEach((range, index) => {
+            result.push([range.min, range[attribute]]);
+            if (index < sortedRanges.length - 1) {
+                const nextMin = sortedRanges[index + 1].min;
+                if (range.max < nextMin) {
+                    result.push([range.max, baseColor]);
+                }
+            } else {
+                result.push([range.max, baseColor]);
+            }
+        });
+        return result;
     }
 
     /**
@@ -493,8 +537,14 @@ export class ChartUplotComponent implements OnInit, AfterViewInit, OnDestroy {
             let scriptToRun = Utils.clone(script);
             let chart = this.hmiService.getChart(this.property.id);
             this.reloadActive = true;
-            scriptToRun.parameters = [<ScriptParam>{ type: ScriptParamType.chart, value: chart?.lines }];
-            this.scriptService.runScript(scriptToRun).subscribe(customData => {
+            scriptToRun.parameters = [<ScriptParam>{
+                type: ScriptParamType.chart,
+                value: chart?.lines,
+                name: script.parameters[0]?.name
+            }];
+            this.scriptService.runScript(scriptToRun).pipe(
+                delay(200)
+            ).subscribe(customData => {
                 this.setCustomValues(customData);
             }, err => {
                 console.error(err);
@@ -573,3 +623,5 @@ interface ValueType {
 interface ValueDictionary {
     [key: string]: ValueType[];
 }
+
+type Zone = [number, string];

@@ -38,7 +38,8 @@ export class FlexEventComponent implements OnInit {
     eventRunScript = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.onRunScript);
 
     events: GaugeEvent[];
-    eventType = {};
+    eventType = <GaugeEventType>{};
+
     setValueType = GaugeEventSetValueType;
     enterActionType = {};
     actionType: typeof GaugeEventActionType | typeof ViewEventActionType = GaugeEventActionType;
@@ -49,9 +50,14 @@ export class FlexEventComponent implements OnInit {
                          Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.oniframe)];
     cardDestination = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.onwindow);
     panelDestination = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.onViewToPanel);
+    eventOnWindows = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.oncard);
     viewPanels: PanelData[];
 
-    constructor(private translateService: TranslateService) {
+    eventOnOpenTab = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.onOpenTab);
+    eventOnIframe = Utils.getEnumKey(GaugeEventActionType, GaugeEventActionType.oniframe);
+
+    constructor(
+        private translateService: TranslateService) {
     }
 
     ngOnInit() {
@@ -67,6 +73,7 @@ export class FlexEventComponent implements OnInit {
             this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.select)] = this.translateService.instant(GaugeEventType.select);
         } else {
             this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.click)] = this.translateService.instant(GaugeEventType.click);
+            this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.dblclick)] = this.translateService.instant(GaugeEventType.dblclick);
             this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.mousedown)] = this.translateService.instant(GaugeEventType.mousedown);
             this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.mouseup)] = this.translateService.instant(GaugeEventType.mouseup);
             this.eventType[Utils.getEnumKey(GaugeEventType, GaugeEventType.mouseover)] = this.translateService.instant(GaugeEventType.mouseover);
@@ -149,6 +156,10 @@ export class FlexEventComponent implements OnInit {
         return this.eventWithPosition.indexOf(eventAction) !== -1;
     }
 
+    withWindows(eventAction: GaugeEventActionType) {
+        return eventAction !== this.eventOnOpenTab;
+    }
+
     withSetValue(action) {
         let a = Object.keys(this.actionType).indexOf(action);
         let b = Object.values(this.actionType).indexOf(GaugeEventActionType.onSetValue);
@@ -168,6 +179,14 @@ export class FlexEventComponent implements OnInit {
     }
 
     withAddress(action) {
+        let a = Object.keys(this.actionType).indexOf(action);
+        let b = Object.values(this.actionType).indexOf(GaugeEventActionType.oniframe);
+        let c = Object.values(this.actionType).indexOf(GaugeEventActionType.oncard);
+        let tab = Object.values(this.actionType).indexOf(GaugeEventActionType.onOpenTab);
+        return a > -1 && (a === b || a === c || a === tab);
+    }
+
+    withSize(action) {
         let a = Object.keys(this.actionType).indexOf(action);
         let b = Object.values(this.actionType).indexOf(GaugeEventActionType.oniframe);
         let c = Object.values(this.actionType).indexOf(GaugeEventActionType.oncard);

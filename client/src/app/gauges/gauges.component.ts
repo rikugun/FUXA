@@ -34,6 +34,7 @@ import { GaugeBaseComponent } from './gauge-base/gauge-base.component';
 import { HtmlImageComponent } from './controls/html-image/html-image.component';
 import { PanelComponent } from './controls/panel/panel.component';
 import { FuxaViewComponent } from '../fuxa-view/fuxa-view.component';
+import { AuthService } from '../_services/auth.service';
 
 @Injectable()
 export class GaugesManager {
@@ -73,6 +74,7 @@ export class GaugesManager {
         HtmlImageComponent, PanelComponent];
 
     constructor(private hmiService: HmiService,
+        private authService: AuthService,
         private winRef: WindowRef) {
         // subscription to the change of variable value, then emit to the gauges of fuxa-view
         this.hmiService.onVariableChanged.subscribe(sig => {
@@ -440,7 +442,7 @@ export class GaugesManager {
      * return all events binded to the gauge with mouse event
      * @param ga
      */
-     getBindMouseEvent(ga: GaugeSettings, evType: GaugeEventType) {
+     getBindMouseEvent(ga: GaugeSettings, evType: GaugeEventType): GaugeEvent[] {
         for (let i = 0; i < GaugesManager.Gauges.length; i++) {
             if (ga.type.startsWith(GaugesManager.Gauges[i].TypeTag)) {
                 if (typeof GaugesManager.Gauges[i]['getEvents'] === 'function') {
@@ -562,13 +564,16 @@ export class GaugesManager {
         }
     }
 
-    toggleSignalValue(sigid: string) {
+    toggleSignalValue(sigid: string, bitmask?: number) {
         if (this.hmiService.variables.hasOwnProperty(sigid)) {
             let currentValue = this.hmiService.variables[sigid].value;
             if (currentValue === null || currentValue === undefined){
                 return;
             } else {
-                if (currentValue === 0 || currentValue === '0') {
+                if (!Utils.isNullOrUndefined(bitmask)) {
+                    const value = GaugeBaseComponent.toggleBitmask(currentValue, bitmask);
+                    this.putSignalValue(sigid, value.toString());
+                } else if (currentValue === 0 || currentValue === '0') {
                     this.putSignalValue(sigid, '1');
                 } else if (currentValue === 1 || currentValue === '1') {
                     this.putSignalValue(sigid, '0');
@@ -803,7 +808,7 @@ export class GaugesManager {
             let gauge = GaugeProgressComponent.initElement(ga);
             return gauge || true;
         } else if (ga.type.startsWith(HtmlSwitchComponent.TypeTag)) {
-            let gauge = HtmlSwitchComponent.initElement(ga, res, ref, isview);
+            let gauge = HtmlSwitchComponent.initElement(ga, res, ref, this.authService.checkPermission.bind(this.authService));
             this.mapGauges[ga.id] = gauge;
             return gauge;
         } else if (ga.type.startsWith(HtmlTableComponent.TypeTag)) {
@@ -830,6 +835,10 @@ export class GaugesManager {
             return gauge;
         } else if (ga.type.startsWith(HtmlButtonComponent.TypeTag)) {
             let gauge = HtmlButtonComponent.initElement(ga);
+            return gauge || true;
+        } else if (ga.type.startsWith(PipeComponent.TypeTag)) {
+            let gauge = PipeComponent.initElement(ga, isview, parent?.getGaugeStatus(ga));
+            this.mapGauges[ga.id] = gauge;
             return gauge || true;
         } else {
             let ele = document.getElementById(ga.id);

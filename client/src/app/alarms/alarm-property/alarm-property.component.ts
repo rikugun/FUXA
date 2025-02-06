@@ -28,6 +28,7 @@ export class AlarmPropertyComponent implements OnInit {
     actionSetView = Utils.getEnumKey(AlarmActionsType, AlarmActionsType.setView);
     actionSetValue = Utils.getEnumKey(AlarmActionsType, AlarmActionsType.setValue);
     actionRunScript = Utils.getEnumKey(AlarmActionsType, AlarmActionsType.runScript);
+    actionToastMessage = Utils.getEnumKey(AlarmActionsType, AlarmActionsType.toastMessage);
     // actionSendMsg = Utils.getEnumKey(AlarmActionsType, AlarmActionsType.sendMsg);
 
     errorExist = false;
@@ -116,6 +117,7 @@ export class AlarmPropertyComponent implements OnInit {
         } else if (this.checkValid()) {
             this.data.alarm.property = this.property;
             this.data.alarm.property.permission = this.flexAuth.permission;
+            this.data.alarm.property.permissionRoles = this.flexAuth.permissionRoles;
             this.data.alarm.name = this.flexAuth.name;
             this.dialogRef.close(this.data.alarm);
         }
