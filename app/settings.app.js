@@ -1,7 +1,7 @@
 
 module.exports = {
     // Version to manage update
-    version: '1.2.0-1909',
+    version: 1.2,
 
     // Standard language (editor)
     language: 'zh-cn',
@@ -41,6 +41,11 @@ module.exports = {
     // Default: 24 Hours (1 Day), 0 is disabled only 1 DB file
     daqTokenizer: 24,
 
+    // Tags value to be broadcast,
+    // if false will be send to frontend only the tags bind to current visualized views
+    // if true all configured tags will be send to frontend
+    broadcastAll: false,
+
     // By default, server accepts connections on all IPv4 interfaces.
     // To listen on all IPv6 addresses, set uiHost to "::",
     // The following property can be used to listen on a specific interface. For
@@ -51,6 +56,12 @@ module.exports = {
     // that should be served at http://localhost:1881/.
     // Default: '/client/dist'
     //httpStatic: '/usr/home/fuxa/dist',
+
+    // CORS (Cross-Origin Resource Sharing)
+    // Used to enable CORS for all HTTP request
+    // "allowedOrigins": ["https://example.com", "https://dashboard.example.com"]
+    // Default: ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"]
+    "allowedOrigins": ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"],
 
     // The maximum size of HTTP request that will be accepted by the runtime api.
     // Default: 15mb
