@@ -2,9 +2,10 @@
 
 cd `dirname $0`
 cd ../
-git stash
+git checkout --force sm-release
+#git stash
 git pull --rebase
-git stash apply
+#git stash apply
 
 cd client
 npm i && npm run build
