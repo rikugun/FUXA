@@ -57,12 +57,6 @@ module.exports = {
     // Default: '/client/dist'
     //httpStatic: '/usr/home/fuxa/dist',
 
-    // CORS (Cross-Origin Resource Sharing)
-    // Used to enable CORS for all HTTP request
-    // "allowedOrigins": ["https://example.com", "https://dashboard.example.com"]
-    // Default: ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"]
-    "allowedOrigins": ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"],
-
     // The maximum size of HTTP request that will be accepted by the runtime api.
     // Default: 15mb
     //apiMaxLength: '15mb',
@@ -89,6 +83,20 @@ module.exports = {
 
     // Enable GPIO in Raspberry
     // To enable only by Raspberry Host
+
+    // CORS (Cross-Origin Resource Sharing)
+    // Used to enable CORS for all HTTP request
+    // "allowedOrigins": ["https://example.com", "https://dashboard.example.com"]
+    // Default: ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"]
+    "allowedOrigins": ["http://localhost", "http://127.0.0.1", "http://192.168.*", "http://10.*"],
+
+    //Location to output webcam capture
+    webcamSnapShotsDir: '_webcam_snapshots',
+    //cleanup old snapshots
+    //Default: false
+    webcamSnapShotsCleanup: false,
+    //snapshots retention in days
+    webcamSnapShotsRetain: 7,
 
     modbusTimeout: 3000,
     //modbus TCP socket serial timeout in milliseconds

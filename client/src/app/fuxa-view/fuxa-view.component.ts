@@ -32,6 +32,7 @@ import { LegacyDialogPosition as DialogPosition, MatLegacyDialog as MatDialog } 
 import { WebcamPlayerDialogComponent, WebcamPlayerDialogData } from '../gui-helpers/webcam-player/webcam-player-dialog/webcam-player-dialog.component';
 import { PlaceholderDevice } from '../_models/device';
 import { LanguageService } from '../_services/language.service';
+import { EventUtils } from '../_helpers/event-utils';
 
 declare var SVG: any;
 
@@ -116,7 +117,7 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
 
     ngOnDestroy() {
         try {
-            this.destroy$.next();
+            this.destroy$.next(null);
             this.destroy$.complete();
             this.gaugesManager.unbindGauge(this.id);
             this.clearGaugeStatus();
@@ -533,6 +534,8 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                 self.onOpenTab(events[i], events[i].actoptions);
             } else if (events[i].action === this.eventViewToPanel) {
                 self.onSetViewToPanel(events[i]);
+            }else if(eventTypes.indexOf(GaugeEventActionType.onRefreshImage) === actindex){
+                self.onRefreshImage(ga, ev, events[i].actparam, events[i].actoptions);
             }
         }
     }
@@ -581,8 +584,8 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
                         htmlevent.dom.blur();
                     }
                     if (htmlevent.ga.type === HtmlInputComponent.TypeTag) {
-                        htmlevent.dom.focus();
-                        htmlevent.dom.select();
+                        // htmlevent.dom.focus();
+                        // htmlevent.dom.select();
                         const events = JSON.parse(JSON.stringify(HtmlInputComponent.getEvents(htmlevent.ga.property, GaugeEventType.enter)));
                         self.eventForScript(events, htmlevent.value);
                     }
@@ -780,7 +783,7 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
         dialogRef.afterClosed().subscribe();
     }
 
-    onOpenCard(id: string, event, viewref: string, options: any = {}) {
+    onOpenCard(id: string, event: PointerEvent | TouchEvent | any, viewref: string, options: any = {}) {
         if (options?.singleCard) {
             this.cards = [];
             this.changeDetector.detectChanges();
@@ -802,12 +805,11 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
         card = new CardModel(id);
         card.x = Utils.isNumeric(options.left) ? parseInt(options.left) : 0;
         card.y = Utils.isNumeric(options.top) ? parseInt(options.top) : 0;
-        if (options.relativeFrom !== GaugeEventRelativeFromType.window) {
-            if (event?.clientX) {
-                card.x += event?.clientX;
-            }
-            if (event?.clientY) {
-                card.y += event?.clientY;
+        if (event && options.relativeFrom !== GaugeEventRelativeFromType.window) {
+            const eventPos = EventUtils.getEventClientPosition(event);
+            if (eventPos) {
+                card.x += eventPos.x ?? 0;
+                card.y += eventPos.y ?? 0;
             }
         }
         if (this.hmi.layout.hidenavigation) {
@@ -957,6 +959,10 @@ export class FuxaViewComponent implements OnInit, AfterViewInit, OnDestroy {
             const panelProperty = this.view.items[event.actoptions['panelId']]?.property;
             panelCtrl.loadPage(panelProperty, event.actparam, event.actoptions);
         }
+    }
+
+    onRefreshImage(gaugeSettings: GaugeSettings, event: any, viewRef: string, options: any = {}) {
+        console.log("onRefreshImage")
     }
 
     getCardHeight(height) {

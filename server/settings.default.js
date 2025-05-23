@@ -90,6 +90,15 @@ module.exports = {
     // Enable GPIO in Raspberry
     // To enable only by Raspberry Host
 
+    //Location to output webcam capture
+    webcamSnapShotsDir: '_webcam_snapshots',
+    //cleanup old snapshots
+    //Default: false
+    webcamSnapShotsCleanup: false,
+    //snapshots retention in days
+    webcamSnapShotsRetain: 7,
+
+
     modbusTimeout: 3000,
     //modbus TCP socket serial timeout in milliseconds
     modbusTCPSerialTimeout: 2000,

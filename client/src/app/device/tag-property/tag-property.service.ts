@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
-import { Device, TAG_PREFIX, Tag } from '../../_models/device';
+import {Device, TAG_PREFIX, Tag, ServerTagType} from '../../_models/device';
 import { Utils } from '../../_helpers/utils';
 import { TagPropertyEditS7Component } from './tag-property-edit-s7/tag-property-edit-s7.component';
 import { Observable, map } from 'rxjs';
@@ -13,10 +13,12 @@ import { Node, NodeType } from '../../gui-helpers/treetable/treetable.component'
 import { TagPropertyBacNetData, TagPropertyEditBacnetComponent } from './tag-property-edit-bacnet/tag-property-edit-bacnet.component';
 import { TagPropertyEditWebapiComponent, TagPropertyWebApiData } from './tag-property-edit-webapi/tag-property-edit-webapi.component';
 import { TagPropertyEditEthernetipComponent, TagPropertyEthernetIpData } from './tag-property-edit-ethernetip/tag-property-edit-ethernetip.component';
+import { TagPropertyEditADSclientComponent } from './tag-property-edit-adsclient/tag-property-edit-adsclient.component';
 import { TopicPropertyComponent, TopicPropertyData } from '../topic-property/topic-property.component';
 import { TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
-import {TagPropertyEditGpioComponent, TagPropertyGpioData } from "./tag-property-edit-gpio/tag-property-edit-gpio.component";
+import { TagPropertyEditGpioComponent, TagPropertyGpioData } from './tag-property-edit-gpio/tag-property-edit-gpio.component';
+import { TagPropertyEditWebcamComponent, TagPropertyWebcamData } from "./tag-property-edit-webcam/tag-property-edit-webcam.component";
 
 @Injectable({
     providedIn: 'root'
@@ -344,6 +346,39 @@ export class TagPropertyService {
         dialogRef.afterClosed().subscribe();
     }
 
+    public editTagPropertyADSclient(device: Device, tag: Tag, checkToAdd: boolean): Observable<any> {
+        let oldTagId = tag.id;
+        let tagToEdit: Tag = Utils.clone(tag);
+        let dialogRef = this.dialog.open(TagPropertyEditADSclientComponent, {
+            disableClose: true,
+            data: {
+                device: device,
+                tag: tagToEdit
+            },
+            position: { top: '60px' }
+        });
+
+        return dialogRef.componentInstance.result.pipe(
+            map(result => {
+                if (result) {
+                    tag.name = result.tagName;
+                    tag.address = result.tagAddress;
+                    tag.type = result.tagType;
+                    tag.description = result.tagDescription;
+                    if (checkToAdd) {
+                        this.checkToAdd(tag, device);
+                    } else if (tag.id !== oldTagId) {
+                        //remove old tag device reference
+                        delete device.tags[oldTagId];
+                        this.checkToAdd(tag, device);
+                    }
+                    this.projectService.setDeviceTags(device);
+                }
+                dialogRef.close();
+                return result;
+            })
+        );
+    }
     editTagPropertyGpio(device: Device, tag: Tag, checkToAdd: boolean) {
         let oldTagId = tag.id;
         let tagToEdit: Tag = Utils.clone(tag);
@@ -368,6 +403,44 @@ export class TagPropertyService {
                     tag.address = result.tagAddress;
                     tag.direction = result.tagDirection;
                     tag.edge = result.tagEdge;
+                    if (checkToAdd) {
+                        this.checkToAdd(tag, device);
+                    }else if (tag.id !== oldTagId) {
+                        //remove old tag device reference
+                        delete device.tags[oldTagId];
+                        this.checkToAdd(tag, device);
+                    }
+                    this.projectService.setDeviceTags(device);
+                }
+                dialogRef.close();
+                return result;
+            })
+        );
+    }
+
+    editTagPropertyWebcam(device: Device, tag: Tag, checkToAdd: boolean) {
+        let oldTagId = tag.id;
+        let tagToEdit: Tag = Utils.clone(tag);
+
+        let dialogRef = this.dialog.open(TagPropertyEditWebcamComponent, {
+            disableClose: true,
+            position: { top: '60px' },
+            data: <TagPropertyWebcamData> {
+                device: device,
+                tag: tagToEdit,
+            },
+        });
+
+        return dialogRef.componentInstance.result.pipe(
+            map(result => {
+                if (result) {
+                    tag.name = result.tagName;
+                    tag.type = ServerTagType.string;
+                    tag.init = result.tagInit;
+                    tag.value = result.tagInit;
+                    tag.description = result.tagDescription;
+                    tag.address = result.tagAddress;
+                    tag.options = result.tagOptions ;
                     if (checkToAdd) {
                         this.checkToAdd(tag, device);
                     }else if (tag.id !== oldTagId) {

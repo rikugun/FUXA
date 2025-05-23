@@ -90,3 +90,5 @@ server/_appdata
 client/node_modules
 client/dist
 
+
+server/_widgets

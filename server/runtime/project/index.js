@@ -206,6 +206,10 @@ function setProjectData(cmd, value) {
                 section.table = prjstorage.TableType.GENERAL;
                 section.name = cmd;
                 setLanguages(value);
+            } else if (cmd === ProjectDataCmdType.ClientAccess) {
+                section.table = prjstorage.TableType.GENERAL;
+                section.name = cmd;
+                setClientAccess(value);
             } else if (cmd === ProjectDataCmdType.Graphs) {
                 section.table = prjstorage.TableType.GENERAL;
                 section.name = cmd;
@@ -369,6 +373,14 @@ function setCharts(charts) {
  */
 function setLanguages(languages) {
     data.languages = languages;
+}
+
+/**
+ * Set ClientAccess
+ * @param {*} clientAccess
+ */
+function setClientAccess(clientAccess) {
+    data.clientAccess = clientAccess;
 }
 
 /**
@@ -940,7 +952,7 @@ function _filterProjectPermission(userPermission) {
             if (result.hmi.views[i].items) {
                 Object.values(result.hmi.views[i].items).forEach((item) => {
                     if (item.property) {
-                        const itemPermission = runtime.checkPermission(userPermission, item.property);
+                        const itemPermission = runtime.checkPermission(userPermission, item.property, false, true);
                         if (!itemPermission.show) {
                             var position = view.svgcontent.indexOf(item.id);
                             if (position >= 0) {
@@ -1031,6 +1043,7 @@ const ProjectDataCmdType = {
     Charts: 'charts',
     Graphs: 'graphs',
     Languages: 'languages',
+    ClientAccess: 'client-access',
     SetText: 'set-text',
     SetText: 'set-text',
     DelText: 'del-text',

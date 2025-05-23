@@ -105,7 +105,7 @@ export class GaugesManager {
         });
     }
 
-    createSettings(id: string, type: string) {
+    createSettings(id: string, type: string): GaugeSettings {
         let gs: GaugeSettings = null;
         if (type) {
             for (let i = 0; i < GaugesManager.Gauges.length; i++) {
@@ -191,7 +191,8 @@ export class GaugesManager {
         } else if (ga.type.startsWith(HtmlBagComponent.TypeTag)) {
             this.mapGauges[ga.id] = HtmlBagComponent.detectChange(ga, res, ref);
         } else if (ga.type.startsWith(PipeComponent.TypeTag)) {
-            return this.mapGauges[ga.id] = PipeComponent.detectChange(ga, res, this.winRef);
+            this.mapGauges[ga.id] = PipeComponent.detectChange(ga, res, this.winRef);
+            return this.mapGauges[ga.id];
         } else if (ga.type.startsWith(SliderComponent.TypeTag)) {
             return this.mapGauges[ga.id] = SliderComponent.detectChange(ga, res, ref);
         } else if (ga.type.startsWith(HtmlSwitchComponent.TypeTag)) {
@@ -226,6 +227,13 @@ export class GaugesManager {
     initGaugesMap() {
         this.eventGauge = {};
         this.mapGaugeView = {};
+        this.eventGauge = {};
+        this.mapGaugeView = {};
+        this.memorySigGauges = {};
+        this.mapChart = {};
+        this.mapGauges = {};
+        this.mapTable = {};
+        this.gaugesTags = [];
     }
 
     /**
@@ -760,6 +768,12 @@ export class GaugesManager {
         if (sigsid) {
             for (let i = 0; i < sigsid.length; i++) {
                 this.hmiService.addSignal(sigsid[i], ga);
+            }
+        }
+        if (isview && ga.hide) {
+            let ele = document.getElementById(ga.id);
+            if (ele) {
+                ele.style.display = 'none';
             }
         }
         if (ga.type.startsWith(HtmlChartComponent.TypeTag)) {

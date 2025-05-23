@@ -55,9 +55,11 @@
               "pdfmake/build/pdfmake",
               "pdfmake/build/vfs_fonts",
               "socket.io-client",
-                "eventemitter3",
-                "delegate",
-                "downloadjs"
+              "eventemitter3",
+              "delegate",
+              "downloadjs",
+              "leaflet",
+              "downloadjs"
             ]
           },
           "configurations": {

@@ -469,6 +469,10 @@
     "table.customize-column-edit": "Edit column",
     "table.customize-column-add": "Add column",
     "table.customize-column-remove": "Delete column",
+    "table.customize-column-left": "Move left",
+    "table.customize-column-right": "Move right",
+    "table.customize-row-up": "Move up",
+    "table.customize-row-down": "Move down",
     "table.customize-row-edit": "Edit row",
     "table.customize-row-add": "Add row",
     "table.customize-row-remove": "Delete row",
@@ -642,6 +646,8 @@
     "editor.transform-change-image-title": "NOTE: This image cannot be embedded. It will depend on this path to be displayed",
     "editor.transform-angle": "angle",
     "editor.transform-angle-title": "Change rotation angle",
+    "editor.transform-hide": "Hide",
+    "editor.transform-lock": "Lock",
 
     "editor.align": "Align",
     "editor.align-left-title": "Align Left",
@@ -900,6 +906,9 @@
     "device.property-internal": "Frontend only",
     "device.property-url": "URL (http://[server]:[port])",
     "device.property-webapi-result": "Result of request",
+    "device.property-ads-target": "Target AmsNetId (e.g. 192.168.1.10.1.1:851)",
+    "device.property-ads-local": "Local AmsNetId (e.g. 192.168.1.10.1.1:32750)",
+    "device.property-ads-router": "Router Address(e.g. 192.168.1.120:48898)",
     "device.not-webapi-result": "Configure WebAPI result",
     "device.property-show": "Show Device property",
     "device.property-hide": "Hide Device property",
@@ -1019,6 +1028,17 @@
     "device.tag-scale-write-script-tooltip": "Script to transform value before write to client",
     "device.tag-scale-write-script-params": "Enter Write Script Parameter Values",
     "device.tag-scale-script-params-tooltip": "JSON formated array of parameters with values to pass to script",
+    "device.tag-property-webcam-device": "Webcam device",
+    "device.tag-property-webcam-device-address": "Webcam device ,like(/dev/video0)",
+    "device.tag-property-webcam-options.width": "width",
+    "device.tag-property-webcam-options.height": "height",
+    "device.tag-property-webcam-options.frames": "frames",
+    "device.tag-property-webcam-options.quality": "quality",
+    "device.tag-property-webcam-options.outputType": "outputType",
+    "device.tag-property-webcam-options.callbackReturn": "callbackReturn",
+
+
+
 
 
     "device.connect-ok": "Ok",
@@ -1366,6 +1386,9 @@
     "script.template-getHistoricalTagsoptions-text": "Get Historical Tags values",
     "script.template-getHistoricalTagsoptions-tooltip": "Code template to get Historical Tags values.",
 
+    "client.script-access-title": "Client Scripts access",
+    "client.script-access-info": "Configure access to system functions from the frontend (e.g. widgets) via window.fuxaScriptAPI.",
+
     "reports.list-title": "Reports settings",
     "reports.list-name": "Name",
     "reports.list-type": "Type",
@@ -1484,6 +1507,9 @@
     "resource.list-title-fonts": "Fonts list",
     "resources.lib-widgets": "Widgets",
 
+    "widgets.kiosk-title": "Widgets Kiosk",
+    "widget.remove": "Remove Widget",
+
     "texts.list-title": "Language settings",
     "texts.list-filter": "Filter",
     "texts.list-filter-group": "Group",
@@ -1545,6 +1571,7 @@
     "dlg.setup-scripts": "Scripts",
     "dlg.setup-reports": "Reports",
     "dlg.setup-settings": "Settings",
+    "dlg.setup-client-access": "Frontend Scripts",
     "dlg.setup-logs": "Logs",
     "dlg.setup-notifications": "Notifications",
     "dlg.setup-events": "Events",
@@ -1568,6 +1595,7 @@
     "dlg.app-language-ua": "Ukrainian",
     "dlg.app-language-zh-cn": "Chinese",
     "dlg.app-language-pt": "Portuguese",
+	"dlg.app-language-sv": "Swedish",
     "dlg.app-language-tr": "Turkish",
     "dlg.app-language-ko": "Korean",
     "dlg.app-language-es": "Spanish",
@@ -1672,6 +1700,7 @@
     "msg.device-tags-request-result": "Load {{value}} of {{current}}",
     "msg.chart-with-script": "The defined script receives the list of chart lines as a parameter and then returns the completed list with the data. Code sample in script 'Templates'",
     "msg.script-name-exist": "Script name exist!",
+    "msg.invalid-script-name": "Invalid script name!",
     "msg.templates-exist-ask-overwrite": "The template with name '{{value}}' already exist. Do you want to overwrite it?",
     "msg.templates-save-success": "Template save successful!",
     "msg.view-name-exist": "View name exist!",
@@ -1681,5 +1710,6 @@
     "msg.maps-location-remove": "Would you like to remove Maps Location '{{value}}'?",
     "msg.maps-location-name-exist": "The Maps Location name already exist!",
     "msg.text-name-exist": "Text name already exist!",
-    "msg.texts-text-remove": "Would you like to remove Text '{{value}}'?"
+    "msg.texts-text-remove": "Would you like to remove Text '{{value}}'?",
+    "msg.operation-unauthorized": "Operation Unauthorized!"
 }

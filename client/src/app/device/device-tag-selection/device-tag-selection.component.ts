@@ -68,7 +68,7 @@ export class DeviceTagSelectionComponent implements OnInit, AfterViewInit, OnDes
     }
 
     ngOnDestroy() {
-        this.destroy$.next();
+        this.destroy$.next(null);
         this.destroy$.complete();
     }
 
@@ -160,10 +160,18 @@ export class DeviceTagSelectionComponent implements OnInit, AfterViewInit, OnDes
             this.tagPropertyService.editTagPropertyEthernetIp(device, newTag, true).subscribe(result => {
                 this.loadDevicesTags(newTag, device.name);
             });
-        }else if (device.type === DeviceType.GPIO) {
+        } else if (device.type === DeviceType.ADSclient) {
+            this.tagPropertyService.editTagPropertyADSclient(device, newTag, true).subscribe(result => {
+                this.loadDevicesTags(newTag, device.name);
+            });
+        } else if (device.type === DeviceType.GPIO) {
             this.tagPropertyService.editTagPropertyGpio(device, newTag, true).subscribe(result => {
                 this.loadDevicesTags(newTag, device.name);
             });
+        }else if (device.type === DeviceType.WebCam) {
+            this.tagPropertyService.editTagPropertyWebcam(device, newTag, true).subscribe(result => {
+                this.loadDevicesTags(newTag, device.name);
+            })
         }
     }
 
