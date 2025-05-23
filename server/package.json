@@ -41,6 +41,7 @@
     "node-bacnet": "0.2.4",
     "node-opcua": "2.149.0",
     "node-schedule": "2.1.1",
+    "node-webcam": "^0.8.2",
     "nodemailer": "6.9.9",
     "nopt": "5.0.0",
     "onoff": "^6.0.3",
