@@ -12,5 +12,7 @@ COPY --from=builder /fuxa/client/dist /fuxa/client/dist
 WORKDIR /fuxa/server
 # reinstall sqlite3 for multi platform
 RUN rm -rf node_modules/sqlite3 && npm install --build-from-source --sqlite=/usr/bin sqlite3
+# reinstall epoll for multi platform
+RUN rm -rf node_modules/epoll && npm install epoll
 EXPOSE 1881
 ENTRYPOINT [ "npm", "start" ]
