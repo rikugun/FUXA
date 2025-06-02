@@ -20,8 +20,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Reset package-lock file
-      run: find . -name "package-lock.json" | xargs rm
+    - name: Remove package-lock File
+      uses: Lyoko-Jeremie/js-rm-github-action@master
+      with:
+        path: |
+          ./app/package-lock.json
+          ./client/package-lock.json
+          ./server/package-lock.json
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
