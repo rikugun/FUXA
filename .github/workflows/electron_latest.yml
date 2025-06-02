@@ -34,8 +34,9 @@ jobs:
         node-version: '18'
 
     - name: Install server python dependencies
-      run: python3 -m pip install setuptools
-      working-directory: ./server
+      if: matrix.os == 'macos-latest'
+      run: python3 -m venv ./venv && source .venv/bin/active && python3 -m pip install setuptools
+      working-directory: ./
 
     - name: Install server dependencies
       run: npm install
