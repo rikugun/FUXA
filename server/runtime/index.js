@@ -28,6 +28,7 @@ var jobsMgr;
 var tagsSubscription = new Map();
 var socketPool = new Map();
 var socketMutex = new Map();
+var minioMgr;
 
 function init(_io, _api, _settings, _log, eventsMain) {
     io = _io;
@@ -73,6 +74,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
     scriptsMgr = scripts.create(runtime);
     jobsMgr = jobs.create(runtime);
     devices.init(runtime);
+    // minioMgr =
 
     events.on('project-device:change', updateDevice);
     events.on('device-value:changed', updateDeviceValues);

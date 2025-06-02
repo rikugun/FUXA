@@ -6,7 +6,17 @@ import { DiagnoseService } from '../../_services/diagnose.service';
 import { TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
 
-import { AlarmsRetentionType, AppSettings, DaqStore, DaqStoreRetentionType, DaqStoreType, MailMessage, SmtpSettings, StoreCredentials } from '../../_models/settings';
+import {
+    AlarmsRetentionType,
+    AppSettings,
+    DaqStore,
+    DaqStoreRetentionType,
+    DaqStoreType,
+    MailMessage,
+    MinioSetting,
+    SmtpSettings,
+    StoreCredentials
+} from '../../_models/settings';
 import { Utils } from '../../_helpers/utils';
 
 @Component({
@@ -44,6 +54,7 @@ export class AppSettingsComponent implements OnInit {
     smtpTesting = false;
     smtpTestAddress = '';
     showPassword = false;
+    showSecretKey = false;
 
     daqstoreType = DaqStoreType;
     retationType = DaqStoreRetentionType;
@@ -81,6 +92,10 @@ export class AppSettingsComponent implements OnInit {
         this.settings.daqstore = this.settings.daqstore || new DaqStore();
         if (!this.settings.daqstore.credentials) {
             this.settings.daqstore.credentials = new StoreCredentials();
+        }
+
+        if (Utils.isNullOrUndefined(this.settings.minio)) {
+            this.settings.minio = new MinioSetting();
         }
     }
 

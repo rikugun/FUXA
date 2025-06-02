@@ -21,6 +21,10 @@ export class AppSettings {
     logFull = false;
     /** User role enabled (default group) */
     userRole = false;
+    /**
+     * minio settings
+     */
+    minio = new MinioSetting();
 }
 
 export class SmtpSettings {
@@ -134,4 +138,24 @@ export class MailMessage {
     subject: string;
     text: string;
     html: string;
+}
+
+export class MinioSetting {
+    constructor(minio: MinioSetting = null) {
+        if (minio) {
+            this.endPoint = minio.endPoint;
+            this.port = minio.port;
+            this.accessKey = minio.accessKey;
+            this.secretKey = minio.secretKey;
+            this.useSSL = minio.useSSL;
+            this.bucketName = minio.bucketName;
+        }
+    }
+
+    endPoint: string;
+    port = 80;
+    accessKey: string;
+    secretKey: string;
+    useSSL: false;
+    bucketName: string;
 }

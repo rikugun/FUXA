@@ -20,6 +20,7 @@ const PluginGroupType = {
     connectionDevice: 'connection-device',
     connectionDatabase: 'connection-database',
     chartReport: 'chart-report',
+    oss: 'oss',
 }
 
 var plugins = {};
@@ -36,6 +37,7 @@ plugins['chart.js'] = new Plugin('chart.js', './chartjs', 'Chart', '2.9.4', Plug
 plugins['chartjs-node-canvas'] = new Plugin('chartjs-node-canvas', 'chartjs-canvas', 'Chart', '3.2.0', PluginGroupType.chartReport);
 plugins['onoff'] = new Plugin('onoff', './onoff', 'GPIO', '6.0.3', PluginGroupType.connectionDevice);
 plugins['node-webcam'] = new Plugin('node-webcam', './node-webcam', 'WebCam', '0.8.2', PluginGroupType.connectionDevice, true);
+plugins['minio'] = new Plugin('minio', './minio', 'Minio', '9.0.5', PluginGroupType.oss, true);
 
 
 /**

@@ -80,6 +80,9 @@ function init(_server, _runtime) {
                     if (tosend.smtp) {
                         delete tosend.smtp.password;
                     }
+                    if (tosend.minio) {
+                        delete tosend.minio.secretKey;
+                    }
                     // res.header("Access-Control-Allow-Origin", "*");
                     // res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
                     res.json(tosend);

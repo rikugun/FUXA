@@ -184,6 +184,32 @@
                     </div>
                 </div>
             </mat-tab>
+            <mat-tab label="{{'dlg.app-settings-minio' | translate}}">
+                <div class="block mt20 tab-system">
+                    <div class="my-form-field block system-input">
+                        <span>{{'dlg.app-settings-minio-endpoint' | translate}}</span>
+                        <input [(ngModel)]="settings.minio.endPoint" placeholder="play.min.io" style="width: 320px" type="text">
+                    </div>
+                    <div class="my-form-field ml10">
+                        <span>{{'dlg.app-settings-minio-port' | translate}}</span>
+                        <input numberOnly [(ngModel)]="settings.minio.port" style="width: 80px" type="text">
+                    </div>
+                    <div class="my-form-field ml20">
+                        <span>{{'dlg.app-settings-minio-useSSL' | translate}}</span>
+                        <mat-slide-toggle color="primary" [(ngModel)]="settings.minio.useSSL" ></mat-slide-toggle>
+                    </div>
+                    <div class="my-form-field block mt15 w80 system-input">
+                        <span>{{'dlg.app-settings-minio-accessKey' | translate}}</span>
+                        <input [(ngModel)]="settings.minio.accessKey" placeholder="" class="input-row" type="text">
+                    </div>
+                    <div class="my-form-field block mt15 w80 system-input">
+                        <span>{{'dlg.app-settings-minio-secretKey' | translate}}</span>
+                        <input autocomplete="off" (keydown)="keyDownStopPropagation($event)" [type]="showSecretKey ? 'text' : 'password'" [(ngModel)]="settings.minio.secretKey" class="input-row">
+                        <mat-icon matSuffix (click)="showSecretKey = !showSecretKey" class="show-password">{{showSecretKey ? 'visibility' : 'visibility_off'}}</mat-icon>
+                    </div>
+                </div>
+
+            </mat-tab>
         </mat-tab-group>
     </div>
     <div mat-dialog-actions class="dialog-action">

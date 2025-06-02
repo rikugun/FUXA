@@ -1630,6 +1630,13 @@
     "dlg.app-settings-user-group": "Groups (default)",
     "dlg.app-settings-user-roles": "Roles",
 
+    "dlg.app-settings-minio": "Minio",
+    "dlg.app-settings-minio-endpoint": "Endpoint",
+    "dlg.app-settings-minio-port": "Port",
+    "dlg.app-settings-minio-useSSL": "UseSSL",
+    "dlg.app-settings-minio-accessKey": "AccessKey",
+    "dlg.app-settings-minio-secretKey": "SecretKey",
+
     "store.retention-none": "Disabled",
     "store.retention-day1": "1 day",
     "store.retention-days2": "2 days",

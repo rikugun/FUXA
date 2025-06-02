@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 import { TranslateService } from '@ngx-translate/core';
 import { EndPointApi } from '../_helpers/endpointapi';
 import { ToastrService } from 'ngx-toastr';
-import { AppSettings, DaqStore, SmtpSettings } from '../_models/settings';
+import {AppSettings, DaqStore, MinioSetting, SmtpSettings} from '../_models/settings';
 
 @Injectable({
     providedIn: 'root'
@@ -87,6 +87,15 @@ export class SettingsService {
         if (settings.userRole !== this.appSettings.userRole) {
             this.appSettings.userRole = settings.userRole;
             dirty = true;
+        }
+        if (settings.minio) {
+            for (const k of Object.keys(settings.minio)) {
+                if(settings.minio[k] !== this.appSettings.minio[k]){
+                    this.appSettings.minio = new MinioSetting(settings.minio);
+                    dirty = true;
+                    break;
+                }
+            }
         }
         return dirty;
     }

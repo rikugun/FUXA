@@ -162,6 +162,9 @@ try {
         if (!utils.isNullOrUndefined(mysettings.userRole)) {
             settings.userRole = mysettings.userRole;
         }
+        if (!utils.isNullOrUndefined(mysettings.minio)) {
+            settings.minio = mysettings.minio;
+        }
     }
 } catch (err) {
     logger.error('Error loading user settings file: ' + userSettingsFile)
