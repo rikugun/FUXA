@@ -20,6 +20,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Reset package-lock file
+      run: find . -name "package-lock.json" | xargs rm
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
