@@ -35,7 +35,7 @@ jobs:
 
     - name: Install server python dependencies
       if: matrix.os == 'macos-latest'
-      run: python3 -m venv ./venv && source ./venv/bin/active && python3 -m pip install setuptools
+      run: python3 -m venv ./venv && source ./venv/bin/activate && python3 -m pip install setuptools
       working-directory: ./
 
     - name: Install server dependencies
