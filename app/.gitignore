@@ -3,3 +3,6 @@ _db
 _logs
 
 out/
+dist/
+client/
+server/
