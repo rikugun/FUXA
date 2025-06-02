@@ -33,14 +33,12 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Set up Python Virtual Environment (Poetry)
+    - name: Set up Python Deps
       if: matrix.os == 'macos-latest'
-      uses: DarylStark/actions-python-venv-poetry@v1
-
-    - name: Install server python dependencies
-      if: matrix.os == 'macos-latest'
-      run: python3 -m pip install setuptools
-      working-directory: ./
+      uses: liskin/gh-pipx@v1
+      with:
+        packages: >-
+          setuptools
 
     - name: Install server dependencies
       run: npm install
