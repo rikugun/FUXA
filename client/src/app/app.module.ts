@@ -218,6 +218,8 @@ import { LanguageTextPropertyComponent } from './language/language-text-property
 import { LanguageService } from './_services/language.service';
 import { KioskWidgetsComponent } from './resources/kiosk-widgets/kiosk-widgets.component';
 import { ClientScriptAccessComponent } from './editor/client-script-access/client-script-access.component';
+import { EditPlaceholderComponent } from './gui-helpers/edit-placeholder/edit-placeholder.component';
+import { DeviceAdapterService } from './device-adapter/device-adapter.service';
 import { TagPropertyEditWebcamComponent } from './device/tag-property/tag-property-edit-webcam/tag-property-edit-webcam.component';
 
 
@@ -270,6 +272,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         ViewPropertyComponent,
         DialogLinkProperty,
         EditNameComponent,
+        EditPlaceholderComponent,
         ConfirmDialogComponent,
         DialogInfo,
         DaterangeDialogComponent,
@@ -461,6 +464,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         ActionPropertyService,
         MapsLocationsService,
         LanguageService,
+        DeviceAdapterService,
         {provide: MAT_TOOLTIP_DEFAULT_OPTIONS, useValue: myCustomTooltipDefaults}
     ],
     bootstrap: [AppComponent]
