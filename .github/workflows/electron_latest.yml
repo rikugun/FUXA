@@ -20,10 +20,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Remove package-lock File
+      uses: Lyoko-Jeremie/js-rm-github-action@master
+      with:
+        path: |
+          ./app/package-lock.json
+          ./client/package-lock.json
+          ./server/package-lock.json
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+
+    - name: Set up Python Deps
+      if: matrix.os == 'macos-latest'
+      uses: andgineer/uv-venv@v3
+
+    - name: Install Python(Mac OS) dependencies
+      if: matrix.os == 'macos-latest'
+      run: uv pip install setuptools
 
     - name: Install server dependencies
       run: npm install
