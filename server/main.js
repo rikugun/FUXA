@@ -13,6 +13,7 @@ const utils = require('./runtime/utils');
 var events = require("./runtime/events").create();
 
 const FUXA = require('./fuxa.js');
+require('./skywalking')
 
 const express = require('express');
 const app = express();
