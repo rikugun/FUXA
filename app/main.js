@@ -122,15 +122,17 @@ async function openProject(parentWin) {
 // Create project selection window
 function createProjectSelectionWindow(parentWin) {
     const win = new BrowserWindow({
-        width: 600,
-        height: 400,
+        width: 1280,
+        height: 720,
         parent: parentWin,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
             sandbox: false // Disable renderer sandbox
         },
-        resizable: false
+        resizable: false,
+        fullscreen: true,
+        frame: false /*隐藏导航条，最大化最小化按键*/
     });
     win.setMenu(null);
 
