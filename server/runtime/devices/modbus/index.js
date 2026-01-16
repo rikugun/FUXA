@@ -26,6 +26,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     var lastTimestampValue;             // Last Timestamp of asked values
     var type;
     var runtime = _runtime;             // Access runtime config such as scripts
+    var localMutex = new Mutex();
 
     /**
      * initialize the modubus type
@@ -115,7 +116,8 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Update the tags values list, save in DAQ if value changed or in interval and emit values to clients
      */
     this.polling = async function () {
-        let socketRelease;
+        const localRelease = await localMutex.acquire();
+        let sharedRelease;
         try {
             // Connexion/Resource reutilization logic (Socket/Serial) for TCP e RTU
             if (data.property.socketReuse) {
@@ -127,9 +129,12 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     resourceKey = data.property.address;
                 }
 
-                if (resourceKey && runtime.socketMutex.has(resourceKey)) {
+                if (resourceKey) {
+                    if (!runtime.socketMutex.has(resourceKey)) {
+                        runtime.socketMutex.set(resourceKey, new Mutex());
+                    }
                     // Adquire o mutex para garantir acesso exclusivo ao recurso (socket TCP ou porta Serial RTU)
-                    socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
+                    sharedRelease = await runtime.socketMutex.get(resourceKey).acquire();
                 }
             }
 
@@ -137,9 +142,10 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
         } catch (err) {
             logger.error(`'${data.name}' polling! ${err}`);
         } finally {
-            if (!utils.isNullOrUndefined(socketRelease)) {
-                socketRelease()
+            if (!utils.isNullOrUndefined(sharedRelease)) {
+                sharedRelease();
             }
+            localRelease();
         }
     }
     this._polling = async function () {
@@ -372,22 +378,24 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             //     }
             // }
 
-            let socketRelease;
+            const localRelease = await localMutex.acquire();
+            let sharedRelease;
             try {
                 // Connexion/Resource reutilization logic (Socket/Serial) for TCP and RTU
                 if (data.property.socketReuse) {
                     let resourceKey;
                     if (type === ModbusTypes.TCP || type === ModbusTypes.RTU) {
-                        // For TCP: socket addres. For RTU: serial port address
+                        // For TCP: socket address. For RTU: serial port address
                         resourceKey = data.property.address;
                     }
 
-                    if (resourceKey && runtime.socketMutex.has(resourceKey)) {
-                        socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
+                    if (resourceKey) {
+                        if (!runtime.socketMutex.has(resourceKey)) {
+                            runtime.socketMutex.set(resourceKey, new Mutex());
+                        }
+                        sharedRelease = await runtime.socketMutex.get(resourceKey).acquire();
                     }
                 }
-
-                _checkWorking(true);
 
                 await _writeMemory(parseInt(memaddr), offset, val).then(result => {
                     logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
@@ -401,10 +409,10 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             } catch (err) {
                 logger.error(`'${data.name}' setValue error! ${err}`);
             } finally {
-                _checkWorking(false);
-                if (!utils.isNullOrUndefined(socketRelease)) {
-                    socketRelease();
+                if (!utils.isNullOrUndefined(sharedRelease)) {
+                    sharedRelease();
                 }
+                localRelease();
             }
             return true;
         } else {
@@ -469,12 +477,9 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     parity: data.property.parity.toLowerCase()
                 }
 
-                // >>> ADDED: Initialize the mutex for  Modbus RTU (porta serial) <<<
-                if (data.property.socketReuse === ModbusReuseModeType.ReuseSerial && !runtime.socketMutex.has(data.property.address)) {
-                    // port address (data.property.address) is the key for the resource
+                if (data.property.socketReuse && !runtime.socketMutex.has(data.property.address)) {
                     runtime.socketMutex.set(data.property.address, new Mutex());
                 }
-                // >>> END OF CHANGE <<<
 
                 if (data.property.connectionOption === ModbusOptionType.RTUBufferedPort) {
                     client.connectRTUBuffered(data.property.address, rtuOptions, callback);
@@ -499,19 +504,17 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     } else {
                         socket = new net.Socket();
                         runtime.socketPool.set(data.property.address, socket);
-                        //init read mutex
-                        if (data.property.socketReuse === ModbusReuseModeType.ReuseSerial) {
-                            runtime.socketMutex.set(data.property.address, new Mutex())
-                        }
                     }
+                    
+                    if (!runtime.socketMutex.has(data.property.address)) {
+                        runtime.socketMutex.set(data.property.address, new Mutex());
+                    }
+                    
                     var openFlag = socket.readyState === "opening" || socket.readyState === "open";
                     if (!openFlag) {
                         socket.connect({
-                            // Default options
-                            ...{
-                                host: addr,
-                                port: port
-                            },
+                            host: addr,
+                            port: port
                         });
                     }
                 }
