@@ -26,7 +26,8 @@ module.exports = {
                 if (tag.scaleReadFunction) {
                     value = await callScaleScript(tag.scaleReadFunction, tag.scaleReadParams ? tag.scaleReadParams : undefined, runtime, true, value);
                 }
-                if (utils.isNumber(value, obj)) {
+                const type = tag?.type;
+                if (!(type === 'String' || type === 'ByteString' || type === 'string') && utils.isNumber(value, obj)) {
                     value = obj.value;
                     if (tag.deadband && tag.deadband.value && !utils.isNullOrUndefined(oldValue)) {
                         if (Math.abs(value - oldValue) <= tag.deadband.value) {
@@ -40,6 +41,8 @@ module.exports = {
                             value = dayjs(value).format(tag.scale.dateTimeFormat);
                         } else if (tag.scale.mode === 'convertTickTime' && tag.scale.dateTimeFormat) {
                             value = durationToTimeFormat(dayjs.duration(value), tag.scale.dateTimeFormat);
+                        } else if (tag.scale.mode === 'expression' && tag.scale.readExpression) {
+                            value = evaluateExpression(tag.scale.readExpression, value);
                         }
                     }
                     if (tag.format) {
@@ -62,6 +65,8 @@ module.exports = {
                     value = obj.value;
                     if (tag.scale && tag.scale.mode === 'linear') {
                         value = tag.scale.rawLow + ((tag.scale.rawHigh - tag.scale.rawLow) * (value - tag.scale.scaledLow)) / (tag.scale.scaledHigh - tag.scale.scaledLow);
+                    } else if (tag.scale && tag.scale.mode === 'expression' && tag.scale.writeExpression) {
+                        value = evaluateExpression(tag.scale.writeExpression, value);
                     }
                 }
                 if (tag.scaleWriteFunction) {
@@ -78,8 +83,12 @@ module.exports = {
         if (type === 'number') {
             return parseFloat(value);
         } else if (type === 'boolean') {
+            if (value === null || value === undefined || value === '') {
+                return false;
+            }
             if (typeof value === 'string') {
-                return value.toLowerCase() !== 'false';
+                const lowerValue = value.toLowerCase().trim();
+                return lowerValue === 'true' || lowerValue === '1';
             }
             return Boolean(value);
         } else if (type === 'string') {
@@ -89,7 +98,7 @@ module.exports = {
             if (Number.isNaN(val)) {
                 // maybe boolean
                 val = Number(value);
-                // maybe string
+
                 if (Number.isNaN(val)) {
                     val = value;
                 }
@@ -164,4 +173,15 @@ const callScaleScript = async (scriptId, params, runtime, isRead, value) => {
         return value;
     }
     return value;
+}
+
+const evaluateExpression = (expression, value) => {
+    try {
+        // Create a function with 'this' bound to the value
+        const func = new Function('return ' + expression);
+        return func.call(value);
+    } catch (error) {
+        console.error(`Expression evaluation error: ${error.toString()}`);
+        return null; // Return null to indicate failure, preventing wrong values
+    }
 }

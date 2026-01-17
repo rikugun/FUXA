@@ -1,7 +1,7 @@
 // the start/root module that tells Angular how to assemble the application.
 
 import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
+import { BrowserModule, DomSanitizer } from '@angular/platform-browser';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { MaterialModule } from './material.module';
@@ -104,6 +104,7 @@ import { FlexAuthComponent } from './gauges/gauge-property/flex-auth/flex-auth.c
 import { FlexHeadComponent } from './gauges/gauge-property/flex-head/flex-head.component';
 import { FlexEventComponent } from './gauges/gauge-property/flex-event/flex-event.component';
 import { FlexActionComponent } from './gauges/gauge-property/flex-action/flex-action.component';
+import { FlexActionsStandaloneComponent } from './gauges/gauge-property/flex-actions-standalone/flex-actions-standalone.component';
 import { FlexVariableComponent } from './gauges/gauge-property/flex-variable/flex-variable.component';
 import { MatSelectSearchModule } from './gui-helpers/mat-select-search/mat-select-search.module';
 import { HtmlInputComponent } from './gauges/controls/html-input/html-input.component';
@@ -148,6 +149,9 @@ import { IframePropertyComponent } from './gauges/controls/html-iframe/iframe-pr
 import { TablePropertyComponent } from './gauges/controls/html-table/table-property/table-property.component';
 import { TableCustomizerComponent } from './gauges/controls/html-table/table-customizer/table-customizer.component';
 import { DataTableComponent } from './gauges/controls/html-table/data-table/data-table.component';
+import { HtmlSchedulerComponent } from './gauges/controls/html-scheduler/html-scheduler.component';
+import { SchedulerComponent } from './gauges/controls/html-scheduler/scheduler/scheduler.component';
+import { SchedulerPropertyComponent } from './gauges/controls/html-scheduler/scheduler-property/scheduler-property.component';
 import { ReportListComponent } from './reports/report-list/report-list.component';
 import { ReportEditorComponent } from './reports/report-editor/report-editor.component';
 import { DataConverterService } from './_services/data-converter.service';
@@ -166,7 +170,7 @@ import { RcgiService } from './_services/rcgi/rcgi.service';
 import { ToastNotifierService } from './_services/toast-notifier.service';
 import { MyFileService } from './_services/my-file.service';
 import { TagsIdsConfigComponent } from './editor/tags-ids-config/tags-ids-config.component';
-import { MAT_LEGACY_TOOLTIP_DEFAULT_OPTIONS as MAT_TOOLTIP_DEFAULT_OPTIONS, MatLegacyTooltipDefaultOptions as MatTooltipDefaultOptions } from '@angular/material/legacy-tooltip';
+import { MAT_TOOLTIP_DEFAULT_OPTIONS as MAT_TOOLTIP_DEFAULT_OPTIONS, MatTooltipDefaultOptions as MatTooltipDefaultOptions } from '@angular/material/tooltip';
 import { HtmlImageComponent } from './gauges/controls/html-image/html-image.component';
 import { NgxSchedulerComponent } from './gui-helpers/ngx-scheduler/ngx-scheduler.component';
 import { FlexDeviceTagComponent } from './gauges/gauge-property/flex-device-tag/flex-device-tag.component';
@@ -218,10 +222,19 @@ import { LanguageTextPropertyComponent } from './language/language-text-property
 import { LanguageService } from './_services/language.service';
 import { KioskWidgetsComponent } from './resources/kiosk-widgets/kiosk-widgets.component';
 import { ClientScriptAccessComponent } from './editor/client-script-access/client-script-access.component';
+import { TagPropertyEditWebcamComponent } from './device/tag-property/tag-property-edit-webcam/tag-property-edit-webcam.component';
 import { EditPlaceholderComponent } from './gui-helpers/edit-placeholder/edit-placeholder.component';
 import { DeviceAdapterService } from './device-adapter/device-adapter.service';
-import { TagPropertyEditWebcamComponent } from './device/tag-property/tag-property-edit-webcam/tag-property-edit-webcam.component';
-
+import { VideoPropertyComponent } from './gauges/controls/html-video/video-property/video-property.component';
+import { InputPropertyComponent } from './gauges/controls/html-input/input-property/input-property.component';
+import { TagPropertyEditMelsecComponent } from './device/tag-property/tag-property-edit-melsec/tag-property-edit-melsec.component';
+import { SchedulerConfirmDialogComponent } from './gauges/controls/html-scheduler/scheduler-confirm-dialog/scheduler-confirm-dialog.component';
+import { MatIconRegistry } from '@angular/material/icon';
+import { NodeRedFlowsComponent } from './integrations/node-red/node-red-flows/node-red-flows.component';
+import { ApiKeysListComponent } from './apikeys/api-keys-list/api-keys-list.component';
+import { ApiKeyPropertyComponent } from './apikeys/api-key-property/api-key-property.component';
+import { TagPropertyEditRedisComponent } from './device/tag-property/tag-property-edit-redis/tag-property-edit-redis.component';
+import { TagPropertyRedisScanComponent } from './device/tag-property/tag-property-edit-redis/tag-property-redis-scan/tag-property-redis-scan.component';
 
 export function createTranslateLoader(http: HttpClient) {
     return new TranslateHttpLoader(http, './assets/i18n/', '.json');
@@ -254,6 +267,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         TagPropertyEditEthernetipComponent,
         TagPropertyEditADSclientComponent,
         TagPropertyEditGpioComponent,
+        TagPropertyEditMelsecComponent,
         TagOptionsComponent,
         TopicPropertyComponent,
         DevicePropertyComponent,
@@ -279,6 +293,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         GaugeBaseComponent,
         HtmlInputComponent,
         HtmlButtonComponent,
+        InputPropertyComponent,
         HtmlSelectComponent,
         HtmlChartComponent,
         HtmlGraphComponent,
@@ -307,6 +322,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         FlexHeadComponent,
         FlexEventComponent,
         FlexActionComponent,
+        FlexActionsStandaloneComponent,
         FlexVariableComponent,
         FlexVariablesMappingComponent,
         FlexVariableMapComponent,
@@ -393,7 +409,17 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         LanguageTextPropertyComponent,
         LanguageTextListComponent,
         ClientScriptAccessComponent,
-        TagPropertyEditWebcamComponent
+        TagPropertyEditWebcamComponent,
+        VideoPropertyComponent,
+        HtmlSchedulerComponent,
+        SchedulerComponent,
+        SchedulerPropertyComponent,
+        SchedulerConfirmDialogComponent,
+        NodeRedFlowsComponent,
+        ApiKeysListComponent,
+        ApiKeyPropertyComponent,
+        TagPropertyEditRedisComponent,
+        TagPropertyRedisScanComponent,
     ],
     imports: [
         BrowserModule,
@@ -469,4 +495,14 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
     ],
     bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {
+    constructor(
+        iconReg: MatIconRegistry,
+        sanitizer: DomSanitizer
+    ) {
+        iconReg.addSvgIcon('group', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/group.svg'));
+        iconReg.addSvgIcon('to_bottom', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/to-bottom.svg'));
+        iconReg.addSvgIcon('to_top', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/to-top.svg'));
+        iconReg.addSvgIcon('nodered-flows', sanitizer.bypassSecurityTrustResourceUrl('/assets/images/nodered-icon.svg'));
+    }
+}

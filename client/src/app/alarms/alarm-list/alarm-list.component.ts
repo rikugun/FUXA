@@ -1,6 +1,6 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild } from '@angular/core';
-import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
-import { MatLegacyTable as MatTable, MatLegacyTableDataSource as MatTableDataSource } from '@angular/material/legacy-table';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { MatTable as MatTable, MatTableDataSource as MatTableDataSource } from '@angular/material/table';
 import { MatSort } from '@angular/material/sort';
 import { Subscription } from 'rxjs';
 
@@ -12,7 +12,7 @@ import { Alarm, AlarmSubProperty, AlarmSubActions } from '../../_models/alarm';
 @Component({
     selector: 'app-alarm-list',
     templateUrl: './alarm-list.component.html',
-    styleUrls: ['./alarm-list.component.css']
+    styleUrls: ['./alarm-list.component.scss']
 })
 export class AlarmListComponent implements OnInit, AfterViewInit, OnDestroy {
 
@@ -57,6 +57,12 @@ export class AlarmListComponent implements OnInit, AfterViewInit, OnDestroy {
 
     onEditAlarm(alarm: Alarm) {
 		this.editAlarm(alarm, 0);
+    }
+
+    onCopyAlarm(alarm: Alarm) {
+        let copy = JSON.parse(JSON.stringify(alarm));
+        copy.name = copy.name + ' (copy)';
+        this.editAlarm(copy, 1);
     }
 
     onRemoveAlarm(alarm: Alarm) {

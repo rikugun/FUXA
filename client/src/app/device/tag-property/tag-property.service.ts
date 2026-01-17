@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
-import {Device, TAG_PREFIX, Tag, ServerTagType} from '../../_models/device';
+import { MatDialog as MatDialog } from '@angular/material/dialog';
+import { Device, TAG_PREFIX, Tag, ServerTagType } from '../../_models/device';
 import { Utils } from '../../_helpers/utils';
 import { TagPropertyEditS7Component } from './tag-property-edit-s7/tag-property-edit-s7.component';
 import { Observable, map } from 'rxjs';
@@ -18,7 +18,10 @@ import { TopicPropertyComponent, TopicPropertyData } from '../topic-property/top
 import { TranslateService } from '@ngx-translate/core';
 import { ToastrService } from 'ngx-toastr';
 import { TagPropertyEditGpioComponent, TagPropertyGpioData } from './tag-property-edit-gpio/tag-property-edit-gpio.component';
-import { TagPropertyEditWebcamComponent, TagPropertyWebcamData } from "./tag-property-edit-webcam/tag-property-edit-webcam.component";
+import { TagPropertyEditWebcamComponent, TagPropertyWebcamData } from './tag-property-edit-webcam/tag-property-edit-webcam.component';
+import { TagPropertyEditMelsecComponent } from './tag-property-edit-melsec/tag-property-edit-melsec.component';
+import { TagPropertyEditRedisComponent, TagPropertyRedisData } from './tag-property-edit-redis/tag-property-edit-redis.component';
+import { TagPropertyRedisScanComponent, TagPropertyRedisScanData } from './tag-property-edit-redis/tag-property-redis-scan/tag-property-redis-scan.component';
 
 @Injectable({
     providedIn: 'root'
@@ -341,7 +344,8 @@ export class TagPropertyService {
             },
             position: { top: '60px' }
         });
-        dialogRef.componentInstance.invokeSubscribe = (oldtopic, newtopics) => this.addTopicSubscription(device, oldtopic, newtopics, tagsMap, callbackModify);
+        dialogRef.componentInstance.invokeSubscribe =
+            (oldtopic, newtopics, sendToProjectDevice = true) => this.addTopicSubscription(device, oldtopic, newtopics, tagsMap, sendToProjectDevice, callbackModify);
         dialogRef.componentInstance.invokePublish = (oldtopic, newtopic) => this.addTopicToPublish(device, oldtopic, newtopic, tagsMap, callbackModify);
         dialogRef.afterClosed().subscribe();
     }
@@ -405,7 +409,7 @@ export class TagPropertyService {
                     tag.edge = result.tagEdge;
                     if (checkToAdd) {
                         this.checkToAdd(tag, device);
-                    }else if (tag.id !== oldTagId) {
+                    } else if (tag.id !== oldTagId) {
                         //remove old tag device reference
                         delete device.tags[oldTagId];
                         this.checkToAdd(tag, device);
@@ -456,6 +460,104 @@ export class TagPropertyService {
         );
     }
 
+    public editTagPropertyMelsec(device: Device, tag: Tag, checkToAdd: boolean): Observable<any> {
+        let oldTagId = tag.id;
+        let tagToEdit: Tag = Utils.clone(tag);
+        let dialogRef = this.dialog.open(TagPropertyEditMelsecComponent, {
+            disableClose: true,
+            data: {
+                device: device,
+                tag: tagToEdit
+            },
+            position: { top: '60px' }
+        });
+
+        return dialogRef.componentInstance.result.pipe(
+            map(result => {
+                if (result) {
+                    tag.name = result.tagName;
+                    tag.address = result.tagAddress;
+                    tag.type = result.tagType;
+                    tag.description = result.tagDescription;
+                    if (checkToAdd) {
+                        this.checkToAdd(tag, device);
+                    } else if (tag.id !== oldTagId) {
+                        //remove old tag device reference
+                        delete device.tags[oldTagId];
+                        this.checkToAdd(tag, device);
+                    }
+                    this.projectService.setDeviceTags(device);
+                }
+                dialogRef.close();
+                return result;
+            })
+        );
+    }
+
+    public editTagPropertyRedis(device: Device, tag: Tag, checkToAdd: boolean): Observable<any> {
+        let oldTagId = tag.id;
+        let tagToEdit: Tag = Utils.clone(tag);
+        let dialogRef = this.dialog.open(TagPropertyEditRedisComponent, {
+            disableClose: true,
+            data: <TagPropertyRedisData>{
+                device: device,
+                tag: tagToEdit
+            },
+            position: { top: '60px' }
+        });
+
+        return dialogRef.componentInstance.result.pipe(
+            map(result => {
+                if (result) {
+                    tag.name = result.tagName;
+                    tag.address = result.tagAddress;
+                    tag.type = result.tagType;
+                    tag.description = result.tagDescription;
+                    if (checkToAdd) {
+                        this.checkToAdd(tag, device);
+                    } else if (tag.id !== oldTagId) {
+                        //remove old tag device reference
+                        delete device.tags[oldTagId];
+                        this.checkToAdd(tag, device);
+                    }
+                    this.projectService.setDeviceTags(device);
+                }
+                dialogRef.close();
+                return result;
+            })
+        );
+    }
+
+    public scanTagsRedis(device: Device): Observable<any> {
+        const existing = device.tags ? Object.values(device.tags).map(tag => tag.address) : [];
+        let dialogRef = this.dialog.open(TagPropertyRedisScanComponent, {
+            disableClose: true,
+            position: { top: '60px' },
+            data: <TagPropertyRedisScanData> {
+                device: device,
+                existing: existing
+            },
+        });
+
+        return dialogRef.componentInstance.result.pipe(
+            map(result => {
+                if (result) {
+                    debugger;
+                    result.selectedKeys?.forEach(key => {
+                        let tag = new Tag(Utils.getGUID(TAG_PREFIX));
+                        tag.name = key;
+                        tag.type = 'number';
+                        tag.address = key;
+                        this.checkToAdd(tag, device);
+                    });
+                    this.projectService.setDeviceTags(device);
+                }
+                dialogRef.close();
+                return device.tags;
+            })
+        );
+    }
+
     checkToAdd(tag: Tag, device: Device, overwrite: boolean = false) {
         let exist = false;
         Object.keys(device.tags).forEach((key) => {
@@ -480,7 +582,7 @@ export class TagPropertyService {
         return result;
     }
 
-    private addTopicSubscription(device: Device, oldTopic: Tag, topics: Tag[], tagsMap: {}, callbackModify: () => void) {
+    private addTopicSubscription(device: Device, oldTopic: Tag, topics: Tag[], tagsMap: {}, sendToProjectDevice, callbackModify: () => void) {
         if (topics) {
             let existNames = Object.values(device.tags).filter((t: Tag) => { if (!oldTopic || t.id !== oldTopic.id) {return t.name;} }).map((t: Tag) => t.name);
             topics.forEach((topic: Tag) => {
@@ -508,6 +610,8 @@ export class TagPropertyService {
                     }
                 }
             });
+        }
+        if (sendToProjectDevice) {
             this.projectService.setDeviceTags(device);
             if (callbackModify) {
                 callbackModify();

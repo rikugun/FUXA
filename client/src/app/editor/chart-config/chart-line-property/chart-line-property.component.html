@@ -31,7 +31,7 @@
         <div class="block mt10">
             <div class="my-form-field" style="width: 140px;">
                 <span>{{'chart.config-line-width' | translate}}</span>
-                <input numberOnly formControlName="lineWidth" style="width:140px" type="number" min="1" max="5">
+                <input numberOnly formControlName="lineWidth" style="width:140px" type="number" min="1">
             </div>
             <div class="my-form-field inbk ml20 tac">
                 <span>{{'chart.config-line-gap' | translate}}</span>
@@ -51,11 +51,11 @@
                     [cpOKButton]="true" [cpCancelButton]="true" [cpCancelButtonClass]="'cpCancelButtonClass'" [cpCancelButtonText]="'Cancel'" [cpOKButtonText]="'OK'"
                     [cpOKButtonClass]="'cpOKButtonClass'" style="padding: 8px 0 0 0; width: 88px" [cpPosition]="'right'" />
             </div>
-            <div class="my-form-field ml20">
-                <button mat-icon-button (click)="onAddZone()">
-                    {{'chart.config-line-add-zone' | translate}}
+            <div class="my-form-field ml20 icon-button-text">
+                <button mat-icon-button (click)="onAddZone()" class="inbk">
                     <mat-icon>add_circle_outline</mat-icon>
                 </button>
+                <span>{{'chart.config-line-add-zone' | translate}}</span>
             </div>
         </div>
         <div class="my-form-field block-zones mt10">

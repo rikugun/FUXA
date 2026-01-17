@@ -9,12 +9,15 @@ var events = Events.create();
 var devices = require('./devices');
 var project = require('./project');
 var users = require('./users');
+var apiKeys = require('./apikeys');
 var alarms = require('./alarms');
 var notificator = require('./notificator');
 var scripts = require('./scripts');
 var plugins = require('./plugins');
 var utils = require('./utils');
 const daqstorage = require('./storage/daqstorage');
+const schedulerStorage = require('./scheduler/scheduler-storage');
+const schedulerService = require('./scheduler/scheduler-service');
 var jobs = require('./jobs');
 
 var api;
@@ -47,6 +50,15 @@ function init(_io, _api, _settings, _log, eventsMain) {
 
     daqstorage.init(settings, logger, runtime);
 
+    // Initialize scheduler services
+    schedulerStorage.init(settings, logger, runtime).then(() => {
+        return schedulerService.init(settings, logger, runtime);
+    }).then(() => {
+        logger.info('runtime init scheduler services successful!', true);
+    }).catch(err => {
+        logger.error('runtime.failed-to-init scheduler services: ' + err);
+    });
+
     plugins.init(settings, logger).then(result => {
         logger.info('runtime init plugins successful!', true);
         events.emit('init-plugins-ok');
@@ -54,6 +66,11 @@ function init(_io, _api, _settings, _log, eventsMain) {
         logger.error('runtime.failed-to-init plugins');
     });
 
+    apiKeys.init(settings, logger).then(() => {
+        logger.info('runtime init apiKeys successful!', true);
+    }).catch(err => {
+        logger.error('runtime.failed-to-init apiKeys: ' + err);
+    });
 
     users.init(settings, logger).then(result => {
         logger.info('runtime init users successful!', true);
@@ -148,7 +165,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
                 if (message === 'get') {
                     var adevs = devices.getDevicesValues();
                     for (var id in adevs) {
-                        updateDeviceValues({ id: id, values: adevs[id] });
+                        updateDeviceValues({ id: id, values: adevs[id] || {} });
                     }
                 } else if (message.cmd === 'set' && message.var) {
                     devices.setDeviceValue(message.var.source, message.var.id, message.var.value, message.fnc);
@@ -308,7 +325,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
                 if (message.sendLastValue) {
                     var adevs = devices.getDevicesValues();
                     for (var id in adevs) {
-                        updateDeviceValues({ id: id, values: adevs[id] });
+                        updateDeviceValues({ id: id, values: adevs[id] || {}});
                     }
                 }
             } catch (err) {
@@ -332,7 +349,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
 
     setInterval(() => {
         io.emit(Events.IoEventTypes.ALIVE, { message: 'FUXA server is alive!' });
-    }, 10000);
+    }, (settings.heartbeatIntervalSec || 10) * 1000);
 }
 
 function start() {
@@ -505,6 +522,7 @@ function updateDeviceValues(event) {
             }
         });
     } catch (err) {
+        logger.error('Error updating device values: ' + err.message);
     }
 }
 
@@ -512,7 +530,8 @@ function tagsToSend(tags) {
     return Object.values(tags).map(tag => ({
         id: tag.id,
         value: tag.value,
-        timestamp: tag.timestamp
+        timestamp: tag.timestamp,
+        quality: tag.quality
     }));
 }
 
@@ -671,6 +690,8 @@ var runtime = module.exports = {
     get settings() { return settings },
     get devices() { return devices },
     get daqStorage() { return daqstorage },
+    get schedulerStorage() { return schedulerStorage },
+    get schedulerService() { return schedulerService },
     get alarmsMgr() { return alarmsMgr },
     get notificatorMgr() { return notificatorMgr },
     get scriptsMgr() { return scriptsMgr },
@@ -680,5 +701,6 @@ var runtime = module.exports = {
     checkPermissionEnabled: checkPermissionEnabled,
     checkPermission: checkPermission,
     get socketPool() { return socketPool },
-    get socketMutex() {return socketMutex }
+    get socketMutex() {return socketMutex },
+    get apiKeys() { return apiKeys }
 }
