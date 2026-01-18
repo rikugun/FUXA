@@ -96,16 +96,24 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 _clearVarsValue();
                 resolve(true);
             } else {
-                client.close(function (result) {
-                    if (result) {
-                        logger.error(`'${data.name}' try to disconnect failed!`);
-                    } else {
-                        logger.info(`'${data.name}' disconnected!`, true);
-                    }
+                // Don't close socket if it's reused - let other devices continue using it
+                if (data.property && data.property.socketReuse) {
+                    logger.info(`'${data.name}' disconnected (socket kept for reuse)!`, true);
                     _emitStatus('connect-off');
                     _clearVarsValue();
-                    resolve(result);
-                });
+                    resolve(true);
+                } else {
+                    client.close(function (result) {
+                        if (result) {
+                            logger.error(`'${data.name}' try to disconnect failed!`);
+                        } else {
+                            logger.info(`'${data.name}' disconnected!`, true);
+                        }
+                        _emitStatus('connect-off');
+                        _clearVarsValue();
+                        resolve(result);
+                    });
+                }
             }
         });
     }
@@ -144,6 +152,17 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     }
     this._polling = async function () {
         if (_checkWorking(true)) {
+            // Check if socket is still valid for reused connections
+            if (data.property && data.property.socketReuse && runtime.socketPool.has(data.property.address)) {
+                const socket = runtime.socketPool.get(data.property.address);
+                if (socket.destroyed || socket.readyState === 'closed') {
+                    logger.warn(`'${data.name}' socket is closed, skipping polling`);
+                    _checkWorking(false);
+                    _emitStatus('connect-error');
+                    return;
+                }
+            }
+
             var readVarsfnc = [];
             if (!data.property.options) {
                 for (var memaddr in memory) {
@@ -152,7 +171,10 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(parseInt(tokenizedAddress.address), memory[memaddr].Start, memory[memaddr].MaxSize, Object.values(memory[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        // Improve error logging
+                        const errorMsg = err && typeof err === 'object' ?
+                            (err.message || err.code || JSON.stringify(err)) : String(err);
+                        logger.error(`'${data.name}' _readMemory error! ${errorMsg}`);
                     }
                 }
             } else {
@@ -161,7 +183,10 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(getMemoryAddress(parseInt(memaddr), false), mixItemsMap[memaddr].Start, mixItemsMap[memaddr].MaxSize, Object.values(mixItemsMap[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        // Improve error logging
+                        const errorMsg = err && typeof err === 'object' ?
+                            (err.message || err.code || JSON.stringify(err)) : String(err);
+                        logger.error(`'${data.name}' _readMemory error! ${errorMsg}`);
                     }
                 }
             }
@@ -604,22 +629,27 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 }, reason => {
                     reject(reason);
                 });
-            } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {          // Holding Registers (Read/Write  400001-465535)
-                client.readHoldingRegisters(start, size).then(res => {
-                    if (res.data) {
-                        vars.map(v => {
-                            let byteoffset = (v.offset - start) * 2;
-                            let buffer = Buffer.from(res.buffer.slice(byteoffset, byteoffset + datatypes[v.type].bytes))
-                            let value = datatypes[v.type].parser(buffer);
-                            v.changed = value !== v.rawValue;
-                            v.rawValue = value;
-                        });
-                    }
-                    resolve(vars);
-                }, reason => {
-                    console.error(reason);
-                    reject(reason);
-                });
+                } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {          // Holding Registers (Read/Write  400001-465535)
+                 client.readHoldingRegisters(start, size).then(res => {
+                     if (res.data) {
+                         vars.map(v => {
+                             let byteoffset = (v.offset - start) * 2;
+                             let buffer = Buffer.from(res.buffer.slice(byteoffset, byteoffset + datatypes[v.type].bytes))
+                             let value = datatypes[v.type].parser(buffer);
+                             v.changed = value !== v.rawValue;
+                             v.rawValue = value;
+                         });
+                     }
+                     resolve(vars);
+                 }, reason => {
+                     // Log specific Modbus errors
+                     if (reason && reason.message) {
+                         logger.error(`'${data.name}' readHoldingRegisters error: ${reason.message}`);
+                     } else {
+                         logger.error(`'${data.name}' readHoldingRegisters error: ${reason}`);
+                     }
+                     reject(reason);
+                 });
             } else {
                 reject();
             }
@@ -635,12 +665,16 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     var _writeMemory = function (memoryAddress, start, value) {
         return new Promise((resolve, reject) => {
             if (memoryAddress === ModbusMemoryAddress.CoilStatus) {                      // Coil Status (Read/Write 000001-065536)
-                client.writeCoil(start, value).then(res => {
-                    resolve();
-                }, reason => {
-                    console.error(reason);
-                    reject(reason);
-                });
+                 client.writeCoil(start, value).then(res => {
+                     resolve();
+                 }, reason => {
+                     if (reason && reason.message) {
+                         logger.error(`'${data.name}' writeCoil error: ${reason.message}`);
+                     } else {
+                         logger.error(`'${data.name}' writeCoil error: ${reason}`);
+                     }
+                     reject(reason);
+                 });
             } else if (memoryAddress === ModbusMemoryAddress.DigitalInputs) {           // Digital Inputs (Read 100001-165536)
                 reject();
             } else if (memoryAddress === ModbusMemoryAddress.InputRegisters) {          // Input Registers (Read  300001-365536)
@@ -648,12 +682,16 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {
                 // Utiliser forceFC16 depuis la config du device
                 if (value.length > 2 || data.property.forceFC16) {
-                    client.writeRegisters(start, value).then(res => {
-                        resolve();
-                    }, reason => {
-                        console.error(reason);
-                        reject(reason);
-                    });
+                     client.writeRegisters(start, value).then(res => {
+                         resolve();
+                     }, reason => {
+                         if (reason && reason.message) {
+                             logger.error(`'${data.name}' writeRegisters error: ${reason.message}`);
+                         } else {
+                             logger.error(`'${data.name}' writeRegisters error: ${reason}`);
+                         }
+                         reject(reason);
+                     });
                 } else {
                     client.writeRegister(start, value).then(res => {
                         resolve();
@@ -761,23 +799,26 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Used to manage the async connection and polling automation (that not overloading)
      * @param {*} check
      */
-    var _checkWorking = function (check) {
-        if (check && working) {
-            overloading++;
-            // !The driver don't give the break connection
-            if (overloading >= 3) {
-                if (type !== ModbusTypes.RTU) {
-                    logger.warn(`'${data.name}' working (connection || polling) overload! ${overloading}`);
-                }
-                client.close();
-            } else {
-                return false;
-            }
-        }
-        working = check;
-        overloading = 0;
-        return true;
-    }
+        var _checkWorking = function (check) {
+         if (check && working) {
+             overloading++;
+             // !The driver don't give the break connection
+             if (overloading >= 3) {
+                 if (type !== ModbusTypes.RTU) {
+                     logger.warn(`'${data.name}' working (connection || polling) overload! ${overloading}`);
+                 }
+                 // Don't close socket if it's reused - just mark as busy
+                 if (!data.property || !data.property.socketReuse) {
+                     client.close();
+                 }
+             } else {
+                 return false;
+             }
+         }
+         working = check;
+         overloading = 0;
+         return true;
+     }
 
     const formatAddress = function (address, token) { return token + '-' + address; }
     const parseAddress = function (address) { return { token: address.split('-')[0], address: address.split('-')[1] }; }
