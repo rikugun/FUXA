@@ -57,7 +57,9 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                                     client.setID(parseInt(data.property.slaveid));
                                 }
                                 // set a timout for requests default is null (no timeout)
-                                client.setTimeout(2000);
+                                var timeout = data.property.timeout || 5000;
+                                client.setTimeout(timeout);
+                                logger.info(`'${data.name}' set timeout to ${timeout}ms`);
                                 logger.info(`'${data.name}' connected!`, true);
                                 _emitStatus('connect-ok');
                                 resolve();
@@ -135,8 +137,12 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     resourceKey = data.property.address;
                 }
 
-                if (resourceKey && runtime.socketMutex.has(resourceKey)) {
-                    // Adquire o mutex para garantir acesso exclusivo ao recurso (socket TCP ou porta Serial RTU)
+                if (resourceKey) {
+                    if (!runtime.socketMutex.has(resourceKey)) {
+                        logger.error(`'${data.name}' mutex not found for ${resourceKey}, cannot perform polling safely`);
+                        throw new Error(`Mutex not initialized for ${resourceKey}. SocketReuse requires mutex for concurrent access.`);
+                    }
+                    // Acquire mutex to guarantee exclusive access to the resource (socket TCP or Serial RTU)
                     socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
                 }
             }
@@ -164,6 +170,9 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             }
 
             var readVarsfnc = [];
+            if (data.property.slaveid) {
+                client.setID(parseInt(data.property.slaveid));
+            }
             if (!data.property.options) {
                 for (var memaddr in memory) {
                     var tokenizedAddress = parseAddress(memaddr);
@@ -403,15 +412,22 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 if (data.property.socketReuse) {
                     let resourceKey;
                     if (type === ModbusTypes.TCP || type === ModbusTypes.RTU) {
-                        // For TCP: socket addres. For RTU: serial port address
+                        // For TCP: socket address. For RTU: serial port address
                         resourceKey = data.property.address;
                     }
 
-                    if (resourceKey && runtime.socketMutex.has(resourceKey)) {
+                    if (resourceKey) {
+                        if (!runtime.socketMutex.has(resourceKey)) {
+                            logger.error(`'${data.name}' mutex not found for ${resourceKey}, cannot perform setValue safely`);
+                            throw new Error(`Mutex not initialized for ${resourceKey}. SocketReuse requires mutex for concurrent access.`);
+                        }
                         socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
                     }
                 }
 
+                if (data.property.slaveid) {
+                    client.setID(parseInt(data.property.slaveid));
+                }
                 _checkWorking(true);
 
                 await _writeMemory(parseInt(memaddr), offset, val).then(result => {
@@ -521,12 +537,26 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     var socket;
                     if (runtime.socketPool.has(data.property.address)) {
                         socket = runtime.socketPool.get(data.property.address);
+                        // check if socket is in bad state
+                        if (socket.destroyed || socket.readyState === 'closed') {
+                            logger.warn(`Removing stale socket for ${data.property.address}`);
+                            runtime.socketPool.delete(data.property.address);
+                            if (runtime.socketMutex.has(data.property.address)) {
+                                runtime.socketMutex.delete(data.property.address);
+                            }
+                            socket = new net.Socket();
+                            runtime.socketPool.set(data.property.address, socket);
+                            // initialize mutex for all socketReuse modes (TCP and RTU)
+                            if (data.property.socketReuse && !runtime.socketMutex.has(data.property.address)) {
+                                runtime.socketMutex.set(data.property.address, new Mutex());
+                            }
+                        }
                     } else {
                         socket = new net.Socket();
                         runtime.socketPool.set(data.property.address, socket);
-                        //init read mutex
-                        if (data.property.socketReuse === ModbusReuseModeType.ReuseSerial) {
-                            runtime.socketMutex.set(data.property.address, new Mutex())
+                        // initialize mutex for all socketReuse modes (TCP and RTU)
+                        if (data.property.socketReuse && !runtime.socketMutex.has(data.property.address)) {
+                            runtime.socketMutex.set(data.property.address, new Mutex());
                         }
                     }
                     var openFlag = socket.readyState === "opening" || socket.readyState === "open";
@@ -535,8 +565,20 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                             // Default options
                             ...{
                                 host: addr,
-                                port: port
+                                port: port,
+                                timeout: 5000
                             },
+                        }).on('error', function(err) {
+                            logger.error(`'${data.name}' socket connection error: ${err.message}`);
+                            runtime.socketPool.delete(data.property.address);
+                        }).on('timeout', function() {
+                            logger.error(`'${data.name}' socket connection timeout`);
+                            socket.destroy();
+                            runtime.socketPool.delete(data.property.address);
+                        }).on('close', function(hadError) {
+                            if (hadError) {
+                                logger.debug(`'${data.name}' socket closed with error`);
+                            }
                         });
                     }
                 }
