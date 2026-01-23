@@ -437,7 +437,9 @@ async function setDeviceValue(deviceid, sigid, value, fnc) {
  * @param {*} status
  */
 function setDeviceConnectionStatus(deviceId, status) {
-    activeDevices[FuxaServerId].setDeviceConnectionStatus(deviceId, status);
+    if (activeDevices[FuxaServerId] && activeDevices[FuxaServerId].setDeviceConnectionStatus) {
+        activeDevices[FuxaServerId].setDeviceConnectionStatus(deviceId, status);
+    }
 }
 
 /**
