@@ -1020,6 +1020,7 @@
     "device.property-parity": "Parity",
     "device.property-force-fc16": "Use Only Write Multiple Registers",
     "device.property-delay": "Frame delay (msec.)",
+    "device.property-timeout": "Timeout (msec.)",
     "device.property-method": "Method",
     "device.property-format": "Format",
     "device.property-internal": "Frontend only",

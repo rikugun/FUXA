@@ -905,6 +905,7 @@
     "device.property-stopbits": "停止位",
     "device.property-parity": "奇偶性",
     "device.property-delay": "帧延迟（毫秒）",
+    "device.property-timeout": "超时（毫秒）",
     "device.property-method": "方法",
     "device.property-format": "格式",
     "device.property-internal": "仅限前端",
