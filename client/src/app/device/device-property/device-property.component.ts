@@ -200,6 +200,9 @@ export class DevicePropertyComponent implements OnInit, OnDestroy {
             if (!this.data.device.property.forceFC16) {
                 this.data.device.property.forceFC16 = false;
             }
+            if (!this.data.device.property.timeout) {
+                this.data.device.property.timeout = 5000;
+            }
         }
 		if (this.data.device.type === DeviceType.REDIS) {
 			const opts = this.data.device?.property?.options;

@@ -505,6 +505,7 @@ export class DeviceMapComponent implements OnInit, OnDestroy, AfterViewInit {
                         device.property.parity = tempdevice.property.parity;
                         device.property.options = tempdevice.property.options;
                         device.property.delay = tempdevice.property.delay;
+                        device.property.timeout = tempdevice.property.timeout;
                         device.property.method = tempdevice.property.method;
                         device.property.format = tempdevice.property.format;
                         device.property.broadcastAddress = tempdevice.property.broadcastAddress;
