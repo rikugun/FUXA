@@ -2,18 +2,25 @@ FROM node:18-bookworm AS builder
 ARG NODE_SNAP=false
 ARG USE_ODBC=false
 
+# Increase Node.js memory limit for build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Workaround for sqlite3 https://stackoverflow.com/questions/71894884/sqlite3-err-dlopen-failed-version-glibc-2-29-not-found
 RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev
 
 WORKDIR /fuxa
 ADD . /fuxa/
-WORKDIR /fuxa/client
-#RUN npm install --legacy-peer-deps && npm run build -- -c production
-RUN npm install  && npm run build -- -c production
 
+# Build client
+WORKDIR /fuxa/client
+RUN npm cache clean --force && \
+    npm install --legacy-peer-deps --no-audit --no-fund && \
+    npm run build -- -c production && \
+    npm cache clean --force
+
+# Build server
 WORKDIR /fuxa/server
-#RUN npm install --legacy-peer-deps
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Install options snap7
 RUN if [ "$NODE_SNAP" = "true" ]; then \

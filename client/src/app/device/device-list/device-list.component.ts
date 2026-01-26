@@ -123,9 +123,6 @@ export class DeviceListComponent implements OnInit, AfterViewInit {
         } else if(this.deviceSelected.type === DeviceType.WebCam){
             this.displayedColumns = this.defWebcamColumns;
             this.tableWidth = this.defAllRowWidth;
-        } else if (this.deviceSelected.type === DeviceType.WebCam){
-            this.displayedColumns = this.defWebcamColumns;
-            this.tableWidth = this.defAllRowWidth;
         } else if (this.deviceSelected.type === DeviceType.REDIS) {
             this.displayedColumns = this.defAllExtColumns;
             this.tableWidth = this.defAllRowWidth;
