@@ -191,6 +191,8 @@ export class DeviceNetProperty {
     connectionOption: string;
     /** Delay used for Modbus RTU/TCP delay between frame*/
     delay: number = 10;
+    /** Timeout used for Modbus RTU/TCP connection in milliseconds */
+    timeout?: number = 5000;
     /** Modbus TCP socket reuse flag */
     socketReuse?: string;
     /** Force FC16 for Modbus RTU/TCP write operations */
