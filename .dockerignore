@@ -5,3 +5,4 @@
 app/electron
 docs
 screenshot
+!server/dist/reports.service.js
