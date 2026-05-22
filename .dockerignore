@@ -1,5 +1,7 @@
-client/node_modules
-client/dist
-client/.angular
-server/node_modules
+.git
+.angular
+**/node_modules
+**/dist
+app/electron
+docs
 screenshot

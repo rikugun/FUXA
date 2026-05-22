@@ -117,10 +117,17 @@ function removeDevice(device) {
  */
 function load() {
     var tempdevices = runtime.project.getDevices();
+    var serverDevice = runtime.project.getServer();
     activeDevices = {};
     runtime.daqStorage.reset();
+    if (serverDevice) {
+        devices.loadDevice(serverDevice);
+    }
     // check existing or to add new
     for (var id in tempdevices) {
+        if (serverDevice && id === FuxaServerId) {
+            continue;
+        }
         if (tempdevices[id].enabled) {
             if(tempdevices[id].type == 'ModbusRTU'){
                 if(!(tempdevices[id].property.address in sharedDevices)){

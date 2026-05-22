@@ -61,6 +61,8 @@
   "dlg.layout-lbl-infos": "Mode de notification d'informations",
   "dlg.layout-lbl-font": "Famille de police",
   "dlg.layout-lbl-font-size": "Taille de police",
+  "dlg.layout-lbl-height": "Hauteur",
+  "dlg.layout-lbl-button-height": "Hauteur bouton",
   "dlg.layout-lbl-anchor": "Direction",
   "dlg.layout-lbl-margin-left": "Marge gauche",
   "dlg.layout-lbl-margin-right": "Marge droite",
@@ -293,6 +295,8 @@
   "chart.property-refresh-interval": "Intervalle de rafraîchissement (min.)",
   "chart.property-hide-toolbar": "Masquer la barre d'outils",
   "chart.property-thouch-zoom": "Zoom tactile",
+  "chart.property-mouse-wheel-scroll": "Défilement molette souris",
+  "chart.property-mouse-wheel-zoom": "Zoom molette souris",
   "chart.property-load-old-values": "Charger l'historique",
   "chart.property-date.format": "Format de la date",
   "chart.property-time.format": "Format de l'heure",
@@ -1009,6 +1013,8 @@
 
   "device.tag-format": "Format du nombre (2 = #.##)",
   "device.tag-deadband": "Zone morte",
+
+  "device.tag-uns-path": "UNS Path",
   "device.tag-scale": "Mode mise à l'échelle / Conversion",
   "device.tag-scale-mode-undefined": "Pas de mise à l'échelle",
   "device.tag-scale-mode-undefined-tooltip": "Valeur du tag",
@@ -1198,6 +1204,12 @@
   "alarms.list-low": "Bas",
   "alarms.list-info": "Message",
   "alarms.list-actions": "Actions",
+  "alarms.import": "Importer les alarmes",
+  "alarms.export": "Exporter les alarmes (JSON)",
+  "alarms.import-title": "Importer les alarmes",
+  "alarms.import-conflicts-message": "{{total}} alarms found. {{conflicts}} already exist. Choose how to import them.",
+  "alarms.import-copy": "Add as copies",
+  "alarms.import-replace": "Replace",
   "alarm.property-title": "Alarme",
   "alarm.property-name": "Nom",
   "alarm.property-permission": "Autorisation",
@@ -1618,6 +1630,11 @@
   "dlg.app-settings-daqstore": "Stockage DAQ",
   "dlg.app-settings-daqstore-type": "Type de base de données",
   "dlg.app-settings-daqstore-url": "URL",
+    "dlg.app-settings-daqstore-configurl": "Config URL",
+    "dlg.app-settings-daqstore-queryconn": "Query connection (PGWire)",
+
+    "dlg.app-settings-daqstore-questdb-host": "QuestDB Host",
+    "dlg.app-settings-daqstore-ingestconn": "Ingestion connection (ILP)",
   "dlg.app-settings-daqstore-token": "Jeton",
   "dlg.app-settings-daqstore-bucket": "Seau",
   "dlg.app-settings-daqstore-organization": "Organisation",
@@ -1697,6 +1714,8 @@
   "msg.editor-mode-locked": "L'éditeur est déjà ouvert !",
   "msg.alarms-clear-success": "Toutes les alarmes ont été annulées !",
   "msg.import-devices-error": "L'importation des appareils a échoué !",
+  "msg.import-alarms-error": "L'importation des alarmes a échoué !",
+  "msg.export-alarms-error": "L'exportation des alarmes a échoué !",
   "msg.report-build-forced": "L'envoi pour construire le rapport réussi !",
   "msg.report-build-error": "L'envoi pour construire le rapport a échoué !",
   "msg.device-tags-request-result": "Chargement {{value}} sur {{current}}",
@@ -1715,3 +1734,5 @@
   "msg.texts-text-remove": "Souhaitez-vous supprimer le texte '{{value}}' ?",
   "msg.operation-unauthorized": "Opération non autorisée !"
 }
+
+

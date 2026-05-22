@@ -4,7 +4,15 @@ module.exports = {
     version: 1.4,
 
     // Standard language (editor)
-    language: 'zh-cn',
+    language: 'en',
+
+    // Hide the editor onboarding wizard when entering editor mode
+    hideEditorOnboarding: false,
+
+    // Per-section informational messages for editor areas
+    editorSectionMessages: {
+        hideDevicePluginsNotice: false
+    },
 
     // The tcp port that the FUXA web server is listening on
     uiPort: process.env.PORT || 1881,
@@ -110,9 +118,16 @@ module.exports = {
 
     swaggerEnabled: false,
 
+    nodeRedEnabled: false,
+
+    // Node-RED access mode: "secure" (auth required) or "legacy-open" (no auth)
+    nodeRedAuthMode: "secure",
+
+    // Node-RED: allow unsafe stdlib modules in functionGlobalContext
+    // WARNING: Enabling this exposes modules like child_process/net to flows.
+    nodeRedUnsafeModules: false,
     modbusTimeout: 3000,
     //modbus TCP socket serial timeout in milliseconds
-    modbusTCPSerialTimeout: 2000,
+    modbusTCPSerialTimeout: 2000
 
-    nodeRedEnabled: false
 }
