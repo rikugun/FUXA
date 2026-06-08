@@ -1,56 +1,76 @@
-FROM node:18-bookworm AS builder
+# --- STAGE 1: Angular Client Builder ---
+FROM node:22-bookworm-slim AS client-builder
+WORKDIR /usr/src/app/client
+COPY client/package*.json ./
+RUN npm install --no-audit --no-fund
+COPY client/ ./
+RUN npm run build -- --configuration production
+
+# --- STAGE 2: Server & Native Dependencies Builder (Alpine) ---
+FROM node:22-alpine AS server-builder
 ARG NODE_SNAP=false
 ARG USE_ODBC=false
 
-# Increase Node.js memory limit for build
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Alpine build tools for native modules (sqlite3, serialport)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    sqlite-dev \
+    $( [ "$USE_ODBC" = "true" ] && echo "unixodbc-dev" )
 
-# Workaround for sqlite3 https://stackoverflow.com/questions/71894884/sqlite3-err-dlopen-failed-version-glibc-2-29-not-found
-RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev
+WORKDIR /usr/src/app/FUXA/server
+COPY server/package*.json ./
+RUN npm install --no-audit --no-fund && \
+    npm prune --production
 
-WORKDIR /fuxa
-ADD . /fuxa/
+# Optional: snap7
+RUN if [ "$NODE_SNAP" = "true" ]; then npm install node-snap7; fi
 
-# Build client
-WORKDIR /fuxa/client
-RUN npm cache clean --force && \
-    npm install --legacy-peer-deps --no-audit --no-fund && \
-    npm run build -- -c production && \
-    npm cache clean --force
+# Rebuild sqlite3 from source for Alpine/musl
+RUN npm install --build-from-source sqlite3
 
-# Build server
-WORKDIR /fuxa/server
-RUN npm install --legacy-peer-deps --no-audit --no-fund
+# Optional: odbc npm package
+RUN if [ "$USE_ODBC" = "true" ]; then npm install odbc; fi
 
-# Install options snap7
-RUN if [ "$NODE_SNAP" = "true" ]; then \
-    npm install node-snap7; \
-    fi
+# Copy server source & build TypeScript
+COPY server/ ./
+RUN rm -rf test
+RUN npm run build
 
-RUN if [ "$USE_ODBC" = "true" ]; then \
-    npm i odbc; \
-    fi
-
-FROM node:18-bookworm
+# --- STAGE 3: Minimal Runner (Alpine) ---
+FROM node:22-alpine
 ARG USE_ODBC=false
 
-COPY --from=builder /fuxa/server /fuxa/server
-COPY --from=builder /fuxa/client/dist /fuxa/client/dist
+RUN apk add --no-cache sqlite-libs
 
-WORKDIR /fuxa/server
-
+# Install minimal ODBC runtime when enabled
 RUN if [ "$USE_ODBC" = "true" ]; then \
-    apt-get update && apt-get install -y dos2unix; \
-    apt-get install -y build-essential unixodbc unixodbc-dev; \
-    dos2unix ../odbc/install_odbc_drivers.sh && chmod +x ../odbc/install_odbc_drivers.sh; \
-    cd ../odbc && ./install_odbc_drivers.sh; \
-    cp ../odbc/odbcinst.ini /etc/odbcinst.ini; \
+        apk add --no-cache unixodbc freetds; \
     fi
 
-RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev && \
-     apt-get autoremove -yqq --purge && \
-     apt-get clean  && \
-     rm -rf /var/lib/apt/lists/*
+WORKDIR /usr/src/app/FUXA
 
+# Copy server (includes node_modules)
+COPY --from=server-builder /usr/src/app/FUXA/server ./server
+
+# Copy client dist
+COPY --from=client-builder /usr/src/app/client/dist ./client/dist
+
+# Conditional ODBC config
+COPY odbc/odbcinst.ini ./odbc/odbcinst.ini
+RUN if [ "$USE_ODBC" = "true" ]; then \
+        cp odbc/odbcinst.ini /etc/odbcinst.ini; \
+    fi
+
+# Copy node-red custom nodes
+COPY node-red/ ./node-red/
+
+# Cleanup unnecessary files in production
+RUN rm -rf ./server/test 
+
+WORKDIR /usr/src/app/FUXA/server
+
+ENV NODE_ENV=production
 EXPOSE 1881
-ENTRYPOINT [ "npm", "start" ]
+CMD [ "node", "main.js" ]

@@ -1,18 +1,42 @@
 FROM --platform=linux/amd64 starmetal/fuxa:latest as builder
 
-FROM node:18
-RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev fswebcam && \
-    apt-get autoremove -yqq --purge && \
-    apt-get clean  && \
-    rm -rf /var/lib/apt/lists/*
+FROM node:22-alpine AS rebuilder
+
+# Install build tools (for native module rebuild) and runtime libs
+# py3-setuptools provides distutils needed by older node-gyp
+RUN apk add --no-cache \
+    python3 py3-setuptools make g++ \
+    sqlite-dev sqlite-libs \
+    git curl gcc musl-dev gd-dev linux-headers
+
+# Build fswebcam from source (not available in Alpine repos)
+RUN cd /tmp && \
+    git clone https://github.com/fsphil/fswebcam.git && \
+    cd fswebcam && \
+    ./configure && make && make install && \
+    cd / && rm -rf /tmp/fswebcam
 
 COPY --from=builder /fuxa/server /fuxa/server
 COPY --from=builder /fuxa/client/dist /fuxa/client/dist
 
 WORKDIR /fuxa/server
-# reinstall sqlite3 for multi platform
-RUN rm -rf node_modules/sqlite3 && npm install --build-from-source --sqlite=/usr/bin sqlite3
-# reinstall epoll for multi platform
-RUN rm -rf node_modules/epoll && npm install epoll
+
+# Remove stale native modules, then reinstall from source for Alpine/musl
+RUN rm -rf node_modules/sqlite3 node_modules/node-gyp && \
+    npm install --build-from-source sqlite3
+RUN rm -rf node_modules/epoll && npm install epoll || true
+
+# --- Minimal Runner ---
+FROM node:22-alpine
+
+RUN apk add --no-cache sqlite-libs gd v4l-utils
+
+COPY --from=rebuilder /fuxa/server /fuxa/server
+COPY --from=rebuilder /fuxa/client/dist /fuxa/client/dist
+COPY --from=rebuilder /usr/local/bin/fswebcam /usr/local/bin/fswebcam
+
+WORKDIR /fuxa/server
+
+ENV NODE_ENV=production
 EXPOSE 1881
-ENTRYPOINT [ "npm", "start" ]
+CMD [ "node", "main.js" ]
