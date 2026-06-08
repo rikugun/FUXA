@@ -16,8 +16,8 @@ RUN cd /tmp && \
     ./configure && make && make install && \
     cd / && rm -rf /tmp/fswebcam
 
-COPY --from=builder /fuxa/server /fuxa/server
-COPY --from=builder /fuxa/client/dist /fuxa/client/dist
+COPY --from=builder /usr/src/app/FUXA/server /fuxa/server
+COPY --from=builder /usr/src/app/FUXA/client/dist /fuxa/client/dist
 
 WORKDIR /fuxa/server
 
