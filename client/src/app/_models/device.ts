@@ -248,6 +248,7 @@ export enum DeviceType {
     MQTTclient = 'MQTTclient',
     internal = 'internal',
     EthernetIP = 'EthernetIP',
+    OmronEthernetIP = 'OmronEthernetIP',
     ODBC = 'ODBC',
     ADSclient = 'ADSclient',
     GPIO = 'GPIO',
