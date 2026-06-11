@@ -11,6 +11,17 @@ const net = require("net");
 const TOKEN_LIMIT = 100;
 const Mutex = require("async-mutex").Mutex;
 
+// Module-level shared TCP connection pool with reference counting
+// Prevents shared socket from being closed when one device disconnects
+const sharedTcpConnections = new Map();
+// key: address (e.g. "192.168.1.100:502")
+// value: {
+//   socket: net.Socket,
+//   mutex: Mutex | null,   // non-null when socketReuse === ReuseSerial
+//   refCount: number,      // number of MODBUSclient instances using this connection
+//   connecting: boolean     // true while a connection attempt is in progress
+// }
+
 function MODBUSclient(_data, _logger, _events, _runtime) {
     var memory = {};                        // Loaded Signal grouped by memory { memory index, start, size, ... }
     var data = JSON.parse(JSON.stringify(_data));                   // Current Device data { id, name, tags, enabled, ... }
@@ -26,6 +37,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     var lastTimestampValue;             // Last Timestamp of asked values
     var type;
     var runtime = _runtime;             // Access runtime config such as scripts
+    var _connected = false;             // Used in shared-socket mode to track connection state
 
     /**
      * initialize the modubus type
@@ -45,11 +57,13 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 try {
                     if (!client.isOpen && _checkWorking(true)) {
                         logger.info(`'${data.name}' try to connect ${data.property.address}`, true);
-                        _connect(function (err) {
+                        _connect(async function (err) {
+                            _checkWorking(false);
                             if (err) {
                                 logger.error(`'${data.name}' connect failed! ${err}`);
                                 _emitStatus('connect-error');
                                 _clearVarsValue();
+                                _connected = false;
                                 reject();
                             } else {
                                 if (data.property.slaveid) {
@@ -57,14 +71,12 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                                     client.setID(parseInt(data.property.slaveid));
                                 }
                                 // set a timout for requests default is null (no timeout)
-                                var timeout = data.property.timeout || 5000;
-                                client.setTimeout(timeout);
-                                logger.info(`'${data.name}' set timeout to ${timeout}ms`);
+                                client.setTimeout(2000);
+                                _connected = true;
                                 logger.info(`'${data.name}' connected!`, true);
                                 _emitStatus('connect-ok');
                                 resolve();
                             }
-                            _checkWorking(false);
                         });
                     } else {
                         reject();
@@ -75,6 +87,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     _checkWorking(false);
                     _emitStatus('connect-error');
                     _clearVarsValue();
+                    _connected = false;
                     reject();
                 }
             } else {
@@ -93,14 +106,27 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     this.disconnect = function () {
         return new Promise(function (resolve, reject) {
             _checkWorking(false);
-            if (!client.isOpen) {
+
+            // TCP + socketReuse mode: only decrement ref count, don't close the shared socket
+            if (type === ModbusTypes.TCP && data.property.socketReuse) {
+                const address = data.property.address;
+                const shared = sharedTcpConnections.get(address);
+                if (shared) {
+                    shared.refCount = Math.max(0, shared.refCount - 1);
+                    if (shared.refCount === 0) {
+                        // Last user, safe to destroy the socket
+                        sharedTcpConnections.delete(address);
+                        shared.socket.destroy();
+                    }
+                }
+                _connected = false;
                 _emitStatus('connect-off');
                 _clearVarsValue();
-                resolve(true);
+                logger.info(`'${data.name}' disconnected!`, true);
+                resolve(false);
             } else {
-                // Don't close socket if it's reused - let other devices continue using it
-                if (data.property && data.property.socketReuse) {
-                    logger.info(`'${data.name}' disconnected (socket kept for reuse)!`, true);
+                // Original logic for non-shared modes
+                if (!client.isOpen) {
                     _emitStatus('connect-off');
                     _clearVarsValue();
                     resolve(true);
@@ -131,19 +157,18 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             if (data.property.socketReuse) {
                 let resourceKey;
                 if (type === ModbusTypes.TCP) {
-                    resourceKey = data.property.address;
+                    // For TCP with shared socket, get mutex from sharedTcpConnections
+                    const shared = sharedTcpConnections.get(data.property.address);
+                    if (shared && shared.mutex) {
+                        socketRelease = await shared.mutex.acquire();
+                    }
                 } else if (type === ModbusTypes.RTU) {
                     // Para RTU, usa o endereço da porta serial como identificador único do recurso
                     resourceKey = data.property.address;
-                }
-
-                if (resourceKey) {
-                    if (!runtime.socketMutex.has(resourceKey)) {
-                        logger.error(`'${data.name}' mutex not found for ${resourceKey}, cannot perform polling safely`);
-                        throw new Error(`Mutex not initialized for ${resourceKey}. SocketReuse requires mutex for concurrent access.`);
+                    if (resourceKey && runtime.socketMutex.has(resourceKey)) {
+                    // Adquire o mutex para garantir acesso exclusivo ao recurso (socket TCP ou porta Serial RTU)
+                        socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
                     }
-                    // Acquire mutex to guarantee exclusive access to the resource (socket TCP or Serial RTU)
-                    socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
                 }
             }
 
@@ -158,21 +183,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     }
     this._polling = async function () {
         if (_checkWorking(true)) {
-            // Check if socket is still valid for reused connections
-            if (data.property && data.property.socketReuse && runtime.socketPool.has(data.property.address)) {
-                const socket = runtime.socketPool.get(data.property.address);
-                if (socket.destroyed || socket.readyState === 'closed') {
-                    logger.warn(`'${data.name}' socket is closed, skipping polling`);
-                    _checkWorking(false);
-                    _emitStatus('connect-error');
-                    return;
-                }
-            }
-
             var readVarsfnc = [];
-            if (data.property.slaveid) {
-                client.setID(parseInt(data.property.slaveid));
-            }
             if (!data.property.options) {
                 for (var memaddr in memory) {
                     var tokenizedAddress = parseAddress(memaddr);
@@ -180,10 +191,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(parseInt(tokenizedAddress.address), memory[memaddr].Start, memory[memaddr].MaxSize, Object.values(memory[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        // Improve error logging
-                        const errorMsg = err && typeof err === 'object' ?
-                            (err.message || err.code || JSON.stringify(err)) : String(err);
-                        logger.error(`'${data.name}' _readMemory error! ${errorMsg}`);
+                        logger.error(`'${data.name}' _readMemory error! ${err}`);
                     }
                 }
             } else {
@@ -192,10 +200,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await _readMemory(getMemoryAddress(parseInt(memaddr), false), mixItemsMap[memaddr].Start, mixItemsMap[memaddr].MaxSize, Object.values(mixItemsMap[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        // Improve error logging
-                        const errorMsg = err && typeof err === 'object' ?
-                            (err.message || err.code || JSON.stringify(err)) : String(err);
-                        logger.error(`'${data.name}' _readMemory error! ${errorMsg}`);
+                        logger.error(`'${data.name}' _readMemory error! ${err}`);
                     }
                 }
             }
@@ -410,24 +415,20 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             try {
                 // Connexion/Resource reutilization logic (Socket/Serial) for TCP and RTU
                 if (data.property.socketReuse) {
-                    let resourceKey;
-                    if (type === ModbusTypes.TCP || type === ModbusTypes.RTU) {
-                        // For TCP: socket address. For RTU: serial port address
-                        resourceKey = data.property.address;
-                    }
-
-                    if (resourceKey) {
-                        if (!runtime.socketMutex.has(resourceKey)) {
-                            logger.error(`'${data.name}' mutex not found for ${resourceKey}, cannot perform setValue safely`);
-                            throw new Error(`Mutex not initialized for ${resourceKey}. SocketReuse requires mutex for concurrent access.`);
+                    if (type === ModbusTypes.TCP) {
+                        // For TCP with shared socket, get mutex from sharedTcpConnections
+                        const shared = sharedTcpConnections.get(data.property.address);
+                        if (shared && shared.mutex) {
+                            socketRelease = await shared.mutex.acquire();
                         }
-                        socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
+                    } else if (type === ModbusTypes.RTU) {
+                        const resourceKey = data.property.address;
+                        if (resourceKey && runtime.socketMutex.has(resourceKey)) {
+                            socketRelease = await runtime.socketMutex.get(resourceKey).acquire();
+                        }
                     }
                 }
 
-                if (data.property.slaveid) {
-                    client.setID(parseInt(data.property.slaveid));
-                }
                 _checkWorking(true);
 
                 await _writeMemory(parseInt(memaddr), offset, val).then(result => {
@@ -459,6 +460,9 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Don't work if PLC will disconnect
      */
     this.isConnected = function () {
+        if (type === ModbusTypes.TCP && data.property.socketReuse) {
+            return _connected;
+        }
         return client.isOpen;
     }
 
@@ -500,7 +504,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     /**
      * Connect with RTU or TCP
      */
-    var _connect = function (callback) {
+    var _connect = async function (callback) {
         try {
             if (type === ModbusTypes.RTU) {
                 const rtuOptions = {
@@ -532,74 +536,76 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     var temp = data.property.address.substring(data.property.address.indexOf(':') + 1);
                     port = parseInt(temp);
                 }
-                //reuse socket
+
+                // Shared-socket path: use module-level sharedTcpConnections with reference counting
                 if (data.property.socketReuse) {
-                    var socket;
-                    if (runtime.socketPool.has(data.property.address)) {
-                        socket = runtime.socketPool.get(data.property.address);
-                        // check if socket is in bad state
-                        if (socket.destroyed || socket.readyState === 'closed') {
-                            logger.warn(`Removing stale socket for ${data.property.address}`);
-                            runtime.socketPool.delete(data.property.address);
-                            if (runtime.socketMutex.has(data.property.address)) {
-                                runtime.socketMutex.delete(data.property.address);
-                            }
-                            socket = new net.Socket();
-                            runtime.socketPool.set(data.property.address, socket);
-                            // initialize mutex for all socketReuse modes (TCP and RTU)
-                            if (data.property.socketReuse && !runtime.socketMutex.has(data.property.address)) {
-                                runtime.socketMutex.set(data.property.address, new Mutex());
-                            }
-                        }
-                    } else {
-                        socket = new net.Socket();
-                        runtime.socketPool.set(data.property.address, socket);
-                        // initialize mutex for all socketReuse modes (TCP and RTU)
-                        if (data.property.socketReuse && !runtime.socketMutex.has(data.property.address)) {
-                            runtime.socketMutex.set(data.property.address, new Mutex());
-                        }
-                    }
-                    var openFlag = socket.readyState === "opening" || socket.readyState === "open";
-                    if (!openFlag) {
-                        socket.connect({
-                            // Default options
-                            ...{
-                                host: addr,
-                                port: port,
-                                timeout: 5000
-                            },
-                        }).on('error', function(err) {
-                            logger.error(`'${data.name}' socket connection error: ${err.message}`);
-                            runtime.socketPool.delete(data.property.address);
-                        }).on('timeout', function() {
-                            logger.error(`'${data.name}' socket connection timeout`);
-                            socket.destroy();
-                            runtime.socketPool.delete(data.property.address);
-                        }).on('close', function(hadError) {
-                            if (hadError) {
-                                logger.debug(`'${data.name}' socket closed with error`);
-                            }
+                    const address = data.property.address;
+                    const needMutex = data.property.socketReuse === ModbusReuseModeType.ReuseSerial;
+
+                    if (!sharedTcpConnections.has(address)) {
+                        // First device to use this address, create a SharedConnection
+                        const shared = {
+                            socket: new net.Socket(),
+                            mutex: needMutex ? new Mutex() : null,
+                            refCount: 0,
+                            connecting: false
+                        };
+                        sharedTcpConnections.set(address, shared);
+
+                        // Auto-cleanup when the underlying socket closes
+                        shared.socket.on('close', () => {
+                            sharedTcpConnections.delete(address);
                         });
                     }
-                }
-                if (data.property.connectionOption === ModbusOptionType.UdpPort) {
-                    client.connectUDP(addr, { port: port }, callback);
-                } else if (data.property.connectionOption === ModbusOptionType.TcpRTUBufferedPort) {
-                    if (data.property.socketReuse) {
-                        client.linkTcpRTUBuffered(runtime.socketPool.get(data.property.address), callback);
-                    } else {
-                        client.connectTcpRTUBuffered(addr, { port: port }, callback);
+
+                    const shared = sharedTcpConnections.get(address);
+                    shared.refCount++;
+
+                    // Ensure the shared socket is connected before proceeding
+                    const openFlag = shared.socket.readyState === "opening" || shared.socket.readyState === "open";
+                    if (!openFlag && !shared.connecting) {
+                        shared.connecting = true;
+                        shared.socket.connect({ host: addr, port: port });
                     }
-                } else if (data.property.connectionOption === ModbusOptionType.TelnetPort) {
-                    if (data.property.socketReuse) {
-                        client.linkTelnet(runtime.socketPool.get(data.property.address), callback);
+
+                    // Wait for the shared socket to become ready
+                    await new Promise((resolve, reject) => {
+                        if (shared.socket.readyState === "open") {
+                            shared.connecting = false;
+                            return resolve();
+                        }
+                        const onConnect = () => {
+                            shared.connecting = false;
+                            resolve();
+                        };
+                        const onError = (err) => {
+                            shared.connecting = false;
+                            shared.refCount--;  // Rollback ref count on connection failure
+                            reject(err);
+                        };
+                        shared.socket.once('connect', onConnect);
+                        shared.socket.once('error', onError);
+                    });
+
+                    // Bind this Modbus client to the shared socket
+                    if (data.property.connectionOption === ModbusOptionType.TcpRTUBufferedPort) {
+                        client.linkTcpRTUBuffered(shared.socket, callback);
+                    } else if (data.property.connectionOption === ModbusOptionType.TelnetPort) {
+                        client.linkTelnet(shared.socket, callback);
+                    } else if (data.property.connectionOption === ModbusOptionType.UdpPort) {
+                        // UDP doesn't support socket reuse, fallback to normal connect
+                        client.connectUDP(addr, { port: port }, callback);
                     } else {
-                        client.connectTelnet(addr, { port: port }, callback);
+                        client.linkTCP(shared.socket, callback);
                     }
                 } else {
-                    //reuse socket
-                    if (data.property.socketReuse) {
-                        client.linkTCP(runtime.socketPool.get(data.property.address), callback);
+                    // Non-shared path: original logic
+                    if (data.property.connectionOption === ModbusOptionType.UdpPort) {
+                        client.connectUDP(addr, { port: port }, callback);
+                    } else if (data.property.connectionOption === ModbusOptionType.TcpRTUBufferedPort) {
+                        client.connectTcpRTUBuffered(addr, { port: port }, callback);
+                    } else if (data.property.connectionOption === ModbusOptionType.TelnetPort) {
+                        client.connectTelnet(addr, { port: port }, callback);
                     } else {
                         client.connectTCP(addr, { port: port }, callback);
                     }
@@ -671,27 +677,22 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 }, reason => {
                     reject(reason);
                 });
-                } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {          // Holding Registers (Read/Write  400001-465535)
-                 client.readHoldingRegisters(start, size).then(res => {
-                     if (res.data) {
-                         vars.map(v => {
-                             let byteoffset = (v.offset - start) * 2;
-                             let buffer = Buffer.from(res.buffer.slice(byteoffset, byteoffset + datatypes[v.type].bytes))
-                             let value = datatypes[v.type].parser(buffer);
-                             v.changed = value !== v.rawValue;
-                             v.rawValue = value;
-                         });
-                     }
-                     resolve(vars);
-                 }, reason => {
-                     // Log specific Modbus errors
-                     if (reason && reason.message) {
-                         logger.error(`'${data.name}' readHoldingRegisters error: ${reason.message}`);
-                     } else {
-                         logger.error(`'${data.name}' readHoldingRegisters error: ${reason}`);
-                     }
-                     reject(reason);
-                 });
+            } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {          // Holding Registers (Read/Write  400001-465535)
+                client.readHoldingRegisters(start, size).then(res => {
+                    if (res.data) {
+                        vars.map(v => {
+                            let byteoffset = (v.offset - start) * 2;
+                            let buffer = Buffer.from(res.buffer.slice(byteoffset, byteoffset + datatypes[v.type].bytes))
+                            let value = datatypes[v.type].parser(buffer);
+                            v.changed = value !== v.rawValue;
+                            v.rawValue = value;
+                        });
+                    }
+                    resolve(vars);
+                }, reason => {
+                    console.error(reason);
+                    reject(reason);
+                });
             } else {
                 reject();
             }
@@ -707,16 +708,12 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     var _writeMemory = function (memoryAddress, start, value) {
         return new Promise((resolve, reject) => {
             if (memoryAddress === ModbusMemoryAddress.CoilStatus) {                      // Coil Status (Read/Write 000001-065536)
-                 client.writeCoil(start, value).then(res => {
-                     resolve();
-                 }, reason => {
-                     if (reason && reason.message) {
-                         logger.error(`'${data.name}' writeCoil error: ${reason.message}`);
-                     } else {
-                         logger.error(`'${data.name}' writeCoil error: ${reason}`);
-                     }
-                     reject(reason);
-                 });
+                client.writeCoil(start, value).then(res => {
+                    resolve();
+                }, reason => {
+                    console.error(reason);
+                    reject(reason);
+                });
             } else if (memoryAddress === ModbusMemoryAddress.DigitalInputs) {           // Digital Inputs (Read 100001-165536)
                 reject();
             } else if (memoryAddress === ModbusMemoryAddress.InputRegisters) {          // Input Registers (Read  300001-365536)
@@ -724,16 +721,12 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
             } else if (memoryAddress === ModbusMemoryAddress.HoldingRegisters) {
                 // Utiliser forceFC16 depuis la config du device
                 if (value.length > 2 || data.property.forceFC16) {
-                     client.writeRegisters(start, value).then(res => {
-                         resolve();
-                     }, reason => {
-                         if (reason && reason.message) {
-                             logger.error(`'${data.name}' writeRegisters error: ${reason.message}`);
-                         } else {
-                             logger.error(`'${data.name}' writeRegisters error: ${reason}`);
-                         }
-                         reject(reason);
-                     });
+                    client.writeRegisters(start, value).then(res => {
+                        resolve();
+                    }, reason => {
+                        console.error(reason);
+                        reject(reason);
+                    });
                 } else {
                     client.writeRegister(start, value).then(res => {
                         resolve();
@@ -841,26 +834,34 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Used to manage the async connection and polling automation (that not overloading)
      * @param {*} check
      */
-        var _checkWorking = function (check) {
-         if (check && working) {
-             overloading++;
-             // !The driver don't give the break connection
-             if (overloading >= 3) {
-                 if (type !== ModbusTypes.RTU) {
-                     logger.warn(`'${data.name}' working (connection || polling) overload! ${overloading}`);
-                 }
-                 // Don't close socket if it's reused - just mark as busy
-                 if (!data.property || !data.property.socketReuse) {
-                     client.close();
-                 }
-             } else {
-                 return false;
-             }
-         }
-         working = check;
-         overloading = 0;
-         return true;
-     }
+    var _checkWorking = function (check) {
+        if (check && working) {
+            overloading++;
+            // !The driver don't give the break connection
+            if (overloading >= 3) {
+                if (type !== ModbusTypes.RTU) {
+                    logger.warn(`'${data.name}' working (connection || polling) overload! ${overloading}`);
+                }
+                if (type === ModbusTypes.TCP && data.property.socketReuse) {
+                    // Shared-socket mode: don't close the shared socket,
+                    // just reset local state. device.js will handle reconnect
+                    // in the next checkStatus cycle.
+                    working = false;
+                    overloading = 0;
+                    _connected = false;
+                    _emitStatus('connect-error');
+                    return true;
+                } else {
+                    client.close();
+                }
+            } else {
+                return false;
+            }
+        }
+        working = check;
+        overloading = 0;
+        return true;
+    }
 
     const formatAddress = function (address, token) { return token + '-' + address; }
     const parseAddress = function (address) { return { token: address.split('-')[0], address: address.split('-')[1] }; }
