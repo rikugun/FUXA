@@ -17,9 +17,11 @@ const sharedTcpConnections = new Map();
 // key: address (e.g. "192.168.1.100:502")
 // value: {
 //   socket: net.Socket,
-//   mutex: Mutex | null,   // non-null when socketReuse === ReuseSerial
-//   refCount: number,      // number of MODBUSclient instances using this connection
-//   connecting: boolean     // true while a connection attempt is in progress
+//   mutex: Mutex | null,           // non-null when socketReuse === ReuseSerial
+//   refCount: number,              // number of MODBUSclient instances using this connection
+//   connecting: boolean,           // true while a connection attempt is in progress
+//   clients: Set<MODBUSclient>,    // all MODBUSclient instances sharing this socket
+//   transactionIdCounter: {value}  // shared counter to avoid transaction ID collisions
 // }
 
 function MODBUSclient(_data, _logger, _events, _runtime) {
@@ -40,6 +42,41 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     var _connected = false;             // Used in shared-socket mode to track connection state
 
     /**
+     * Handle shared socket close: cancel pending transactions, reset state.
+     * Called from the shared socket 'close' event handler.
+     */
+    this._onSocketClose = function () {
+        if (_connected) {
+            _connected = false;
+            working = false;
+            overloading = 0;
+
+            // Cancel all pending modbus transactions so they don't fire
+            // zombie timeout errors after the socket is already closed.
+            if (client._transactions) {
+                Object.keys(client._transactions).forEach(tid => {
+                    const t = client._transactions[tid];
+                    if (t) {
+                        if (t._timeoutHandle) {
+                            clearTimeout(t._timeoutHandle);
+                        }
+                        // Reject pending promises to unblock awaiting reads.
+                        // Use a plain string instead of Error to avoid noisy stack traces.
+                        if (t.next && !t._timeoutFired) {
+                            t._timeoutFired = true;
+                            t.next('Socket closed');
+                        }
+                        delete client._transactions[tid];
+                    }
+                });
+            }
+
+            _emitStatus('connect-error');
+            logger.warn(`'${data.name}' shared socket closed unexpectedly`);
+        }
+    }
+
+    /**
      * initialize the modubus type
      */
     this.init = function (_type) {
@@ -51,13 +88,14 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Emit connection status to clients, clear all Tags values
      */
     this.connect = function () {
+        var self = this;
         return new Promise(function (resolve, reject) {
             if (data.property && data.property.address && (type === ModbusTypes.TCP ||
                 (type === ModbusTypes.RTU && data.property.baudrate && data.property.databits && data.property.stopbits && data.property.parity))) {
                 try {
                     if (!client.isOpen && _checkWorking(true)) {
                         logger.info(`'${data.name}' try to connect ${data.property.address}`, true);
-                        _connect(async function (err) {
+                        _connect(self, async function (err) {
                             _checkWorking(false);
                             if (err) {
                                 logger.error(`'${data.name}' connect failed! ${err}`);
@@ -104,6 +142,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
      * Emit connection status to clients, clear all Tags values
      */
     this.disconnect = function () {
+        var self = this;
         return new Promise(function (resolve, reject) {
             _checkWorking(false);
 
@@ -113,6 +152,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 const shared = sharedTcpConnections.get(address);
                 if (shared) {
                     shared.refCount = Math.max(0, shared.refCount - 1);
+                    shared.clients.delete(self);
                     if (shared.refCount === 0) {
                         // Last user, safe to destroy the socket
                         sharedTcpConnections.delete(address);
@@ -182,25 +222,36 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
         }
     }
     this._polling = async function () {
+        _clearStaleTransactions();
         if (_checkWorking(true)) {
             var readVarsfnc = [];
+            var readErrors = 0;
+            var readTotal = 0;
             if (!data.property.options) {
                 for (var memaddr in memory) {
+                    // Stop polling immediately if socket closed mid-cycle
+                    if (!_connected) break;
+                    readTotal++;
                     var tokenizedAddress = parseAddress(memaddr);
                     try {
                         readVarsfnc.push(await _readMemory(parseInt(tokenizedAddress.address), memory[memaddr].Start, memory[memaddr].MaxSize, Object.values(memory[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        readErrors++;
+                        logger.error(`'${data.name}' _readMemory error! ${err && err.message ? err.message : err}`);
                     }
                 }
             } else {
                 for (var memaddr in mixItemsMap) {
+                    // Stop polling immediately if socket closed mid-cycle
+                    if (!_connected) break;
+                    readTotal++;
                     try {
                         readVarsfnc.push(await _readMemory(getMemoryAddress(parseInt(memaddr), false), mixItemsMap[memaddr].Start, mixItemsMap[memaddr].MaxSize, Object.values(mixItemsMap[memaddr].Items)));
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
-                        logger.error(`'${data.name}' _readMemory error! ${err}`);
+                        readErrors++;
+                        logger.error(`'${data.name}' _readMemory error! ${err && err.message ? err.message : err}`);
                     }
                 }
             }
@@ -216,11 +267,15 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     if (this.addDaq && !utils.isEmptyObject(varsValueChanged)) {
                         this.addDaq(varsValueChanged, data.name, data.id);
                     }
-                } else {
-                    // console.error('then error');
                 }
-                if (lastStatus !== 'connect-ok') {
+                // Only report connect-ok if at least some reads succeeded.
+                // When ALL reads fail (e.g. socket closed mid-poll), don't
+                // falsely report success - the device may be disconnected.
+                if (readErrors === 0 && lastStatus !== 'connect-ok') {
                     _emitStatus('connect-ok');
+                } else if (readErrors > 0 && readErrors === readTotal && _connected) {
+                    _emitStatus('connect-error');
+                    logger.warn(`'${data.name}' all ${readErrors} reads failed, marking connection as error`);
                 }
             } catch (reason) {
                 if (reason) {
@@ -504,7 +559,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
     /**
      * Connect with RTU or TCP
      */
-    var _connect = async function (callback) {
+    var _connect = async function (clientRef, callback) {
         try {
             if (type === ModbusTypes.RTU) {
                 const rtuOptions = {
@@ -548,18 +603,54 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                             socket: new net.Socket(),
                             mutex: needMutex ? new Mutex() : null,
                             refCount: 0,
-                            connecting: false
+                            connecting: false,
+                            clients: new Set(),
+                            // Shared transaction ID counter ensures unique IDs across
+                            // all ModbusRTU instances sharing this socket.
+                            // modbus-serial resets _transactionIdWrite to 1 on each linkTCP
+                            // call, causing ID collisions when multiple devices share one
+                            // socket and each starts from transaction ID 1.
+                            transactionIdCounter: { value: 1 }
                         };
                         sharedTcpConnections.set(address, shared);
 
+                        // Disable socket-level idle timeout permanently.
+                        // client.setTimeout(2000) called by each device's connect() sets
+                        // _timeout=2000 in modbus-serial. On subsequent linkTCP calls,
+                        // TcpPort constructor calls socket.setTimeout(2000) on the shared
+                        // socket, which triggers idle timeout after 2s of no data. With N
+                        // devices taking turns via mutex, idle gaps easily exceed 2s.
+                        // Override setTimeout so modbus-serial can never re-enable it.
+                        // The per-transaction timeout (2s, managed by JS setTimeout in
+                        // modbus-serial's _startTimeout) is NOT affected.
+                        shared.socket.setTimeout(0);
+                        const _origSocketSetTimeout = shared.socket.setTimeout.bind(shared.socket);
+                        shared.socket.setTimeout = function (msecs) {
+                            if (!msecs || msecs <= 0) {
+                                return _origSocketSetTimeout(msecs);
+                            }
+                            // Silently ignore non-zero timeout on shared socket
+                        };
+
+                        // Log socket errors for diagnostics
+                        shared.socket.on('error', (err) => {
+                            logger.error(`Shared socket '${address}' error: ${err.message || err}`);
+                        });
+
                         // Auto-cleanup when the underlying socket closes
-                        shared.socket.on('close', () => {
+                        shared.socket.on('close', (hadError) => {
+                            logger.warn(`Shared socket '${address}' closed (hadError=${hadError})`);
+                            // Notify all client instances that the socket is dead
+                            shared.clients.forEach(c => {
+                                c._onSocketClose();
+                            });
                             sharedTcpConnections.delete(address);
                         });
                     }
 
                     const shared = sharedTcpConnections.get(address);
                     shared.refCount++;
+                    shared.clients.add(clientRef);
 
                     // Ensure the shared socket is connected before proceeding
                     const openFlag = shared.socket.readyState === "opening" || shared.socket.readyState === "open";
@@ -587,16 +678,65 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         shared.socket.once('error', onError);
                     });
 
+                    // Wrap the callback to patch transaction ID tracking
+                    // and prevent socket idle timeout on shared connections.
+                    const sharedCallback = function (err) {
+                        if (!err && client._port) {
+                            const port = client._port;
+
+                            // FIX: Shared transaction ID counter.
+                            // Sync this port's write counter with the shared counter,
+                            // and wrap write() to keep them in sync after each write.
+                            // modbus-serial resets _transactionIdWrite=1 on each open(),
+                            // so multiple devices sharing one socket would each start
+                            // from ID 1, causing response mismatches.
+                            const sharedCounter = shared.transactionIdCounter;
+                            port._transactionIdWrite = sharedCounter.value;
+                            const originalWrite = port.write.bind(port);
+                            port.write = function (buf) {
+                                port._transactionIdWrite = sharedCounter.value;
+                                originalWrite(buf);
+                                sharedCounter.value = port._transactionIdWrite;
+                            };
+
+                            // modbus-serial never deletes _transactions entries after
+                            // resolution. On a shared socket, every client's _onReceive
+                            // fires for every response. When TIDs wrap at 256, stale
+                            // entries in other clients' maps cause "Unexpected data
+                            // error, expected address X got Y". Delete after processing.
+                            if (!client._origOnReceive) {
+                                client._origOnReceive = client._onReceive;
+                            }
+                            port.removeListener("data", client._onReceive);
+                            client._onReceive = function (data) {
+                                const currentPort = client._port;
+                                if (!currentPort) {
+                                    return;
+                                }
+                                const tid = currentPort._transactionIdRead;
+                                client._origOnReceive.call(client, data);
+                                if (tid !== undefined && client._transactions[tid]) {
+                                    if (client._transactions[tid]._timeoutHandle) {
+                                        clearTimeout(client._transactions[tid]._timeoutHandle);
+                                    }
+                                    delete client._transactions[tid];
+                                }
+                            };
+                            port.on("data", client._onReceive);
+                        }
+                        callback(err);
+                    };
+
                     // Bind this Modbus client to the shared socket
                     if (data.property.connectionOption === ModbusOptionType.TcpRTUBufferedPort) {
-                        client.linkTcpRTUBuffered(shared.socket, callback);
+                        client.linkTcpRTUBuffered(shared.socket, sharedCallback);
                     } else if (data.property.connectionOption === ModbusOptionType.TelnetPort) {
-                        client.linkTelnet(shared.socket, callback);
+                        client.linkTelnet(shared.socket, sharedCallback);
                     } else if (data.property.connectionOption === ModbusOptionType.UdpPort) {
                         // UDP doesn't support socket reuse, fallback to normal connect
-                        client.connectUDP(addr, { port: port }, callback);
+                        client.connectUDP(addr, { port: port }, sharedCallback);
                     } else {
-                        client.linkTCP(shared.socket, callback);
+                        client.linkTCP(shared.socket, sharedCallback);
                     }
                 } else {
                     // Non-shared path: original logic
@@ -861,6 +1001,19 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
         working = check;
         overloading = 0;
         return true;
+    }
+
+    var _clearStaleTransactions = function () {
+        if (!client._transactions) {
+            return;
+        }
+        Object.keys(client._transactions).forEach(tid => {
+            const t = client._transactions[tid];
+            if (t && t._timeoutHandle) {
+                clearTimeout(t._timeoutHandle);
+            }
+            delete client._transactions[tid];
+        });
     }
 
     const formatAddress = function (address, token) { return token + '-' + address; }
