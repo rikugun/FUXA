@@ -94,3 +94,4 @@ client/dist
 server/_widgets
 
 .idea
+.sisyphus
