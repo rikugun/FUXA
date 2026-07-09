@@ -44,6 +44,19 @@ jobs:
           platforms: linux/amd64
           tags: starmetal/${{ env.app }}:${{ env.version }}
 
+      - name: Login to Huawei SWR
+        uses: docker/login-action@v3
+        with:
+          registry: swr.cn-south-1.myhuaweicloud.com
+          username: ${{ secrets.SWR_USERNAME }}
+          password: ${{ secrets.SWR_PASSWORD }}
+
+      - name: Push amd64 image to Huawei SWR
+        run: |
+          docker pull starmetal/${{ env.app }}:${{ env.version }}
+          docker tag starmetal/${{ env.app }}:${{ env.version }} swr.cn-south-1.myhuaweicloud.com/starmetal/${{ env.app }}:${{ env.version }}
+          docker push swr.cn-south-1.myhuaweicloud.com/starmetal/${{ env.app }}:${{ env.version }}
+
       - name: Build Multi and push
         uses: docker/build-push-action@v5
         with:
