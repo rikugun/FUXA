@@ -10,6 +10,22 @@ const deviceUtils = require('../device-utils');
 const net = require("net");
 const TOKEN_LIMIT = 100;
 const Mutex = require("async-mutex").Mutex;
+const util = require('util');
+
+/**
+ * Format any error/object/reason for logging.
+ * Prevents "[object Object]" when the value lacks .message (e.g. modbus-serial
+ * rejects with { errCode, modbusErrCode } plain objects or non-Error values).
+ * @param {*} err value caught in catch / rejected promise
+ * @returns {string} human-readable representation
+ */
+function formatErr(err) {
+    if (err === null) return 'null';
+    if (err === undefined) return 'undefined';
+    if (err instanceof Error) return err.stack || err.message || 'Error (no message)';
+    if (typeof err === 'object') return util.inspect(err, { depth: 3 });
+    return String(err);
+}
 
 // Module-level shared TCP connection pool with reference counting
 // Prevents shared socket from being closed when one device disconnects
@@ -98,7 +114,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         _connect(self, async function (err) {
                             _checkWorking(false);
                             if (err) {
-                                logger.error(`'${data.name}' connect failed! ${err}`);
+                                logger.error(`'${data.name}' connect failed! ${formatErr(err)}`);
                                 _emitStatus('connect-error');
                                 _clearVarsValue();
                                 _connected = false;
@@ -121,7 +137,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         _emitStatus('connect-error');
                     }
                 } catch (err) {
-                    logger.error(`'${data.name}' try to connect error! ${err}`);
+                    logger.error(`'${data.name}' try to connect error! ${formatErr(err)}`);
                     _checkWorking(false);
                     _emitStatus('connect-error');
                     _clearVarsValue();
@@ -214,7 +230,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
 
             await this._polling()
         } catch (err) {
-            logger.error(`'${data.name}' polling! ${err}`);
+            logger.error(`'${data.name}' polling! ${formatErr(err)}`);
         } finally {
             if (!utils.isNullOrUndefined(socketRelease)) {
                 socketRelease()
@@ -238,7 +254,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
                         readErrors++;
-                        logger.error(`'${data.name}' _readMemory error! ${err && err.message ? err.message : err}`);
+                        logger.error(`'${data.name}' _readMemory error! ${formatErr(err)}`);
                     }
                 }
             } else {
@@ -251,7 +267,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                         readVarsfnc.push(await delay(data.property.delay || 10));
                     } catch (err) {
                         readErrors++;
-                        logger.error(`'${data.name}' _readMemory error! ${err && err.message ? err.message : err}`);
+                        logger.error(`'${data.name}' _readMemory error! ${formatErr(err)}`);
                     }
                 }
             }
@@ -278,15 +294,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     logger.warn(`'${data.name}' all ${readErrors} reads failed, marking connection as error`);
                 }
             } catch (reason) {
-                if (reason) {
-                    if (reason.stack) {
-                        logger.error(`'${data.name}' _readVars error! ${reason.stack}`);
-                    } else if (reason.message) {
-                        logger.error(`'${data.name}' _readVars error! ${reason.message}`);
-                    }
-                } else {
-                    logger.error(`'${data.name}' _readVars error! ${reason}`);
-                }
+                logger.error(`'${data.name}' _readVars error! ${formatErr(reason)}`);
                 _checkWorking(false);
             };
         } else {
@@ -336,7 +344,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 memItemsMap[id].format = data.tags[id].format;
                 stepsMap[parseInt(data.tags[id].memaddress) + offset] = { size: datatypes[data.tags[id].type].WordLen, offset: offset };
             } catch (err) {
-                logger.error(`'${data.name}' load error! ${err}`);
+                logger.error(`'${data.name}' load error! ${formatErr(err)}`);
             }
         }
         // for fragmented
@@ -365,7 +373,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 }
                 nextAdr = adr + stepsMap[key].size;
             } catch (err) {
-                logger.error(`'${data.name}' load error! ${err}`);
+                logger.error(`'${data.name}' load error! ${formatErr(err)}`);
             }
         });
         logger.info(`'${data.name}' data loaded (${count})`, true);
@@ -489,14 +497,10 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 await _writeMemory(parseInt(memaddr), offset, val).then(result => {
                     logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
                 }, reason => {
-                    if (reason && reason.stack) {
-                        logger.error(`'${data.name}' _writeMemory error! ${reason.stack}`);
-                    } else {
-                        logger.error(`'${data.name}' _writeMemory error! ${reason}`);
-                    }
+                    logger.error(`'${data.name}' _writeMemory error! ${formatErr(reason)}`);
                 });
             } catch (err) {
-                logger.error(`'${data.name}' setValue error! ${err}`);
+                logger.error(`'${data.name}' setValue error! ${formatErr(err)}`);
             } finally {
                 _checkWorking(false);
                 if (!utils.isNullOrUndefined(socketRelease)) {
@@ -634,7 +638,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
 
                         // Log socket errors for diagnostics
                         shared.socket.on('error', (err) => {
-                            logger.error(`Shared socket '${address}' error: ${err.message || err}`);
+                            logger.error(`Shared socket '${address}' error: ${formatErr(err)}`);
                         });
 
                         // Auto-cleanup when the underlying socket closes
@@ -809,7 +813,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                                 v.changed = value !== v.rawValue;
                                 v.rawValue = value;
                             } catch (err) {
-                                console.error(err);
+                                console.error(formatErr(err));
                             }
                         });
                     }
@@ -830,7 +834,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     }
                     resolve(vars);
                 }, reason => {
-                    console.error(reason);
+                    console.error(formatErr(reason));
                     reject(reason);
                 });
             } else {
@@ -851,7 +855,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 client.writeCoil(start, value).then(res => {
                     resolve();
                 }, reason => {
-                    console.error(reason);
+                    console.error(formatErr(reason));
                     reject(reason);
                 });
             } else if (memoryAddress === ModbusMemoryAddress.DigitalInputs) {           // Digital Inputs (Read 100001-165536)
@@ -864,14 +868,14 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                     client.writeRegisters(start, value).then(res => {
                         resolve();
                     }, reason => {
-                        console.error(reason);
+                        console.error(formatErr(reason));
                         reject(reason);
                     });
                 } else {
                     client.writeRegister(start, value).then(res => {
                         resolve();
                     }, reason => {
-                        console.error(reason);
+                        console.error(formatErr(reason));
                         reject(reason);
                     });
                 }
@@ -1051,7 +1055,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                 }
             }
         } catch (err) {
-            console.error(err);
+            console.error(formatErr(err));
         }
         return value;
     }
