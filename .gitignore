@@ -92,3 +92,7 @@ server/_widgets
 
 .agents/
 AGENTS.md
+# OmO
+.omo
+client/dist
+test-assets
