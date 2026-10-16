@@ -89,3 +89,7 @@ server/_appdata
 #client/package-lock.json
 
 server/_widgets
+# OmO
+.omo
+client/dist
+test-assets
