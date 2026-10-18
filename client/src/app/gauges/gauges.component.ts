@@ -30,6 +30,7 @@ import { HtmlIframeComponent } from './controls/html-iframe/html-iframe.componen
 import { HtmlTableComponent } from './controls/html-table/html-table.component';
 import { DataTableComponent } from './controls/html-table/data-table/data-table.component';
 import { HtmlSchedulerComponent } from './controls/html-scheduler/html-scheduler.component';
+import { HtmlRecipeComponent } from './controls/html-recipe/html-recipe.component';
 import { ChartOptions } from '../gui-helpers/ngx-uplot/ngx-uplot.component';
 import { GaugeBaseComponent } from './gauge-base/gauge-base.component';
 import { HtmlImageComponent } from './controls/html-image/html-image.component';
@@ -38,6 +39,7 @@ import { FuxaViewComponent } from '../fuxa-view/fuxa-view.component';
 import { AuthService } from '../_services/auth.service';
 import { DevicesUtils, Tag } from '../_models/device';
 import { HtmlVideoComponent } from './controls/html-video/html-video.component';
+import { Html3dComponent } from './controls/html-3d/html-3d.component';
 
 @Injectable()
 export class GaugesManager {
@@ -80,7 +82,7 @@ export class GaugesManager {
     static Gauges = [ValueComponent, HtmlInputComponent, HtmlButtonComponent, HtmlBagComponent,
         HtmlSelectComponent, HtmlChartComponent, GaugeProgressComponent, GaugeSemaphoreComponent, ShapesComponent, ProcEngComponent, ApeShapesComponent,
         PipeComponent, SliderComponent, HtmlSwitchComponent, HtmlGraphComponent, HtmlIframeComponent, HtmlTableComponent,
-        HtmlImageComponent, PanelComponent, HtmlVideoComponent, HtmlSchedulerComponent];
+        HtmlImageComponent, PanelComponent, HtmlVideoComponent, HtmlSchedulerComponent, HtmlRecipeComponent, Html3dComponent];
 
     constructor(private hmiService: HmiService,
         private authService: AuthService,
@@ -131,7 +133,8 @@ export class GaugesManager {
     createGaugeStatus(ga: GaugeSettings): GaugeStatus {
         let result = new GaugeStatus();
         if (!ga.type.startsWith(HtmlChartComponent.TypeTag) && !ga.type.startsWith(HtmlGraphComponent.TypeTag) &&
-            !ga.type.startsWith(HtmlTableComponent.TypeTag) && !ga.type.startsWith(HtmlSchedulerComponent.TypeTag)) {
+            !ga.type.startsWith(HtmlTableComponent.TypeTag) && !ga.type.startsWith(HtmlSchedulerComponent.TypeTag) &&
+            !ga.type.startsWith(HtmlRecipeComponent.TypeTag)) {
             result.onlyChange = true;
         }
         if (ga.type.startsWith(SliderComponent.TypeTag)) {
@@ -234,10 +237,16 @@ export class GaugesManager {
             delete this.mapGauges[ga.id];
             let gauge = HtmlSchedulerComponent.detectChange(ga, res, ref);
             this.mapGauges[ga.id] = gauge;
+        } else if (ga.type.startsWith(HtmlRecipeComponent.TypeTag)) {
+            delete this.mapGauges[ga.id];
+            let gauge = HtmlRecipeComponent.detectChange(ga, res, ref);
+            this.mapGauges[ga.id] = gauge;
         } else if (ga.type.startsWith(HtmlImageComponent.TypeTag)) {
             HtmlImageComponent.detectChange(ga, true);
         } else if (ga.type.startsWith(HtmlVideoComponent.TypeTag)) {
             HtmlVideoComponent.initElement(ga);
+        } else if (ga.type.startsWith(Html3dComponent.TypeTag)) {
+            Html3dComponent.initElement(ga);
         } else if (elementWithLanguageText) {
             GaugeBaseComponent.setLanguageText(elementWithLanguageText, ga.property?.text);
         } else if (ga.type.startsWith(HtmlInputComponent.TypeTag)) {
@@ -334,6 +343,12 @@ export class GaugesManager {
      * called from fuxa-view, remove bind of dom view gauge
      */
     unbindGauge(domViewId: string) {
+        // release 3d WebGL runtimes bound to this view (context + memory)
+        try {
+            Html3dComponent.destroyByView(domViewId);
+        } catch (err) {
+            console.error(err);
+        }
         // first remove special gauge like chart from memorySigGauges
         let sigGaugeSettingsIdremoved = this.hmiService.removeSignalGaugeFromMap(domViewId);
         Object.keys(sigGaugeSettingsIdremoved).forEach(sid => {
@@ -817,6 +832,8 @@ export class GaugesManager {
             return 'table_';
         } else if (type.startsWith(HtmlSchedulerComponent.TypeTag)) {
             return 'scheduler_';
+        } else if (type.startsWith(Html3dComponent.TypeTag)) {
+            return '3d_';
         }
         return 'shape_';
     }
@@ -947,6 +964,15 @@ export class GaugesManager {
             let gauge = HtmlVideoComponent.initElement(ga, isview);
             this.mapGauges[ga.id] = gauge;
             return gauge || true;
+        } else if (ga.type.startsWith(Html3dComponent.TypeTag)) {
+            let gauge = Html3dComponent.initElement(ga, isview, isview ? parent?.id : undefined);
+            return gauge || true;
+        } else if (ga.type.startsWith(HtmlRecipeComponent.TypeTag)) {
+            let gauge = HtmlRecipeComponent.initElement(ga, res, ref, isview);
+            if (gauge) {
+                this.mapGauges[ga.id] = gauge;
+            }
+            return gauge;
         } else {
             let ele = document.getElementById(ga.id);
             ele?.setAttribute('data-name', ga.name);

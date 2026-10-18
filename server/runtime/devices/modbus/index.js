@@ -125,7 +125,7 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
                                     client.setID(parseInt(data.property.slaveid));
                                 }
                                 // set a timout for requests default is null (no timeout)
-                                client.setTimeout(2000);
+                                client.setTimeout(data.property.timeout || 2000);
                                 _connected = true;
                                 logger.info(`'${data.name}' connected!`, true);
                                 _emitStatus('connect-ok');
@@ -494,13 +494,11 @@ function MODBUSclient(_data, _logger, _events, _runtime) {
 
                 _checkWorking(true);
 
-                await _writeMemory(parseInt(memaddr), offset, val).then(result => {
-                    logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
-                }, reason => {
-                    logger.error(`'${data.name}' _writeMemory error! ${formatErr(reason)}`);
-                });
+                await _writeMemory(parseInt(memaddr), offset, val);
+                logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
             } catch (err) {
-                logger.error(`'${data.name}' setValue error! ${formatErr(err)}`);
+                logger.error(`'${data.name}' setValue error! ${err}`);
+                return false;
             } finally {
                 _checkWorking(false);
                 if (!utils.isNullOrUndefined(socketRelease)) {

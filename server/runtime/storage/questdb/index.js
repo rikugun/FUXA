@@ -37,20 +37,21 @@ function QuestDB(_settings, _log, _currentStorage) {
 
         for (const tagid in tagsValues) {
             let tag = tagsValues[tagid];
-            if (!tag.daq || utils.isNullOrUndefined(tag.value) || Number.isNaN(tag.value)) {
-                if (tag.daq && tag.daq.restored) {
-                    dataToRestore.push({ id: tag.id, deviceId: deviceId, value: tag.value });
-                }
-                if (tag.daq && !tag.daq.enabled) {
-                    continue;
-                }
+            if (!tag.daq) {
+                continue;
+            }
+            if (tag.daq.restored) {
+                dataToRestore.push({ id: tag.id, deviceId: deviceId, value: tag.value });
+            }
+            if (!tag.daq.enabled || utils.isNullOrUndefined(tag.value) || Number.isNaN(tag.value)) {
+                continue;
             }
 
             rowsToWrite.push({
                 tagid,
                 deviceId,
                 deviceName: deviceName || '',
-                unsPath: normalizeUnsPath(tag.unsPath),
+                unsPath: normalizeUnsPath(tag.unsPath === undefined ? tag.tagref?.unsPath : tag.unsPath),
                 value: tag.value,
                 timestamp: tag.timestamp || Date.now(),
             });

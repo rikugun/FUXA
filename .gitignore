@@ -93,5 +93,9 @@ client/dist
 
 server/_widgets
 
-.idea
-.sisyphus
+.agents/
+AGENTS.md
+# OmO
+.omo
+client/dist
+test-assets

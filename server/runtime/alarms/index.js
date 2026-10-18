@@ -67,16 +67,21 @@ function AlarmsManager(_runtime) {
     /**
      * Return the alarms status (active/passive alarms count), { highhigh: <count>, high: <count>, low: <count>, info: <count> }
      */
-    this.getAlarmsStatus = function () {
+    this.getAlarmsStatus = function (permission) {
         return new Promise(function (resolve, reject) {
             alarmstorage.getAlarms().then(function (alrs) {
                 var result = { highhigh: 0, high: 0, low: 0, info: 0, actions: [] };
                 if (alrs) {
                     Object.values(alrs).forEach(alr => {
-                        result[alr.type]++;
+                        if (!_canShowAlarmStatus(alr, permission)) {
+                            return;
+                        }
+                        if (Object.prototype.hasOwnProperty.call(result, alr.type)) {
+                            result[alr.type]++;
+                        }
                         if (alr.type === AlarmsTypes.ACTION && !alr.offtime) {
                             var action = actionsProperty[alr.nametype];
-                            if (action.subproperty) {
+                            if (action && action.subproperty) {
                                 if (action.subproperty.type === ActionsTypes.POPUP || action.subproperty.type === ActionsTypes.SET_VIEW || action.subproperty.type === ActionsTypes.TOAST_MESSAGE) {
                                     result.actions.push({ type: action.subproperty.type, params: action.subproperty.actparam, options: action.subproperty.actoptions });
                                 }
@@ -101,7 +106,7 @@ function AlarmsManager(_runtime) {
                 if (alr.status && alr.type !== AlarmsTypes.ACTION) {
                     var alritem = { name: alr.getId(), type: alr.type, ontime: alr.ontime, offtime: alr.offtime, acktime: alr.acktime,
                         status: alr.status, text: alr.subproperty.text, group: alr.subproperty.group,
-                        bkcolor: alr.subproperty.bkcolor, color: alr.subproperty.color, toack: alr.isToAck() };
+                        bkcolor: alr.subproperty.bkcolor, color: alr.subproperty.color, toack: alr.isToAck(), value: alr.value };
                     var alrPermission = { show: true, enabled: true };
                     if (alr.tagproperty) {
                         alrPermission = runtime.checkPermission(permission, alr.tagproperty);
@@ -147,6 +152,7 @@ function AlarmsManager(_runtime) {
                     alr.acktime = result[i].acktime;
                     alr.userack = result[i].userack;
                     alr.group = result[i].grp;
+                    alr.value = result[i].value;
                     if (alr.ontime) {
                         var alrPermission = { show: true, enabled: true };
                         if (alarmsProperty[alr.name]) {
@@ -303,7 +309,7 @@ function AlarmsManager(_runtime) {
                 if (tag !== null) {
                     groupalarms.forEach(alr => {
                         var value = _checkBitmask(alr, tag.value);
-                        if (alr.check(time, tag.ts, value)) {
+                        if (alr.check(time, tag.ts, value, tag.value)) {
                             changed.push(alr);
                         }
                     });
@@ -356,6 +362,7 @@ function AlarmsManager(_runtime) {
         return new Promise(function (resolve, reject) {
             alarms = {};
             alarmsProperty = {};
+            actionsProperty = {};
             runtime.project.getAlarms().then(function (result) {
                 var alarmsFound = 0;
                 if (result) {
@@ -525,6 +532,18 @@ function AlarmsManager(_runtime) {
         return available;
     }
 
+    var _canShowAlarmStatus = function (alarm, permission) {
+        var property = null;
+        if (alarm.type === AlarmsTypes.ACTION) {
+            property = actionsProperty[alarm.nametype]?.tagproperty;
+        } else if (alarm.nametype) {
+            var alarmName = alarm.nametype.split(SEPARATOR)[0];
+            property = alarmsProperty[alarmName]?.property;
+        }
+        var alrPermission = property ? runtime.checkPermission(permission, property) : { show: true, enabled: true };
+        return !!alrPermission.show;
+    }
+
     var _formatDateTime = function (dt) {
         var dt = new Date(dt);
         return dt.toLocaleDateString() + '-' + dt.toLocaleTimeString();
@@ -558,12 +577,13 @@ function Alarm(name, type, subprop, tagprop) {
     this.lastcheck = 0;
     this.toremove = false;
     this.userack;
+    this.value;
 
     this.getId = function () {
         return this.name + '^~^' + this.type;
     }
 
-    this.check = function (time, dt, value) {
+    this.check = function (time, dt, value, displayValue) {
         if (this.lastcheck + (this.subproperty.checkdelay * TimeMultiplier) > time) {
             return false;
         }
@@ -582,6 +602,7 @@ function Alarm(name, type, subprop, tagprop) {
                 }
                 if (this.ontime + (this.subproperty.timedelay * TimeMultiplier) <= time) {
                     this.status = AlarmStatusEnum.ON;
+                    this.value = displayValue;
                     return true;
                 }
             case AlarmStatusEnum.ON:
@@ -610,6 +631,7 @@ function Alarm(name, type, subprop, tagprop) {
 					this.offtime = 0;
                     this.ontime = time;
                     this.userack = '';
+                    this.value = displayValue;
                     return true;
                 }
                 // remove if acknowledged
@@ -639,6 +661,7 @@ function Alarm(name, type, subprop, tagprop) {
         this.status = AlarmStatusEnum.VOID;
         this.lastcheck = 0;
         this.userack = '';
+        this.value = undefined;
     }
 
     this.toRemove = function () {

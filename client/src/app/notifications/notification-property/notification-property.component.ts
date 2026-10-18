@@ -7,6 +7,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { Utils } from '../../_helpers/utils';
 import { AbstractControl, UntypedFormBuilder, UntypedFormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { ProjectService } from '../../_services/project.service';
+import { APP_LANGUAGES } from '../../_models/language';
 
 @Component({
     selector: 'app-notification-property',
@@ -15,10 +16,13 @@ import { ProjectService } from '../../_services/project.service';
 })
 export class NotificationPropertyComponent implements OnInit {
 
+    notificationLanguages = APP_LANGUAGES;
+
     notification: Notification;
     notificationsType = NotificationsType;
     notificationAlarm = Utils.getEnumKey(NotificationsType, NotificationsType.alarms);
     notificationTrigger = Utils.getEnumKey(NotificationsType, NotificationsType.trigger);
+    notificationAccess = Utils.getEnumKey(NotificationsType, NotificationsType.access);
     formGroup: UntypedFormGroup;
 
     alarmsType = [AlarmsType.HIGH_HIGH, AlarmsType.HIGH, AlarmsType.LOW, AlarmsType.INFO];
@@ -37,6 +41,7 @@ export class NotificationPropertyComponent implements OnInit {
         this.formGroup = this.fb.group({
             name: [this.notification.name, Validators.required],
             receiver: [this.notification.receiver, Validators.required],
+            language: [this.notification.language || 'en'],
             type: [this.notification.type, Validators.required],
             delay: [this.notification.delay],
             interval: [this.notification.interval],
@@ -56,10 +61,17 @@ export class NotificationPropertyComponent implements OnInit {
 
     onOkClick(): void {
         this.notification = {...this.notification, ...this.formGroup.getRawValue()};
+        if (this.notification.type === this.notificationAccess) {
+            this.notification.delay = 0;
+            this.notification.interval = 0;
+        }
         this.dialogRef.close(this.notification);
     }
 
     onTypeChanged(type: NotificationsType) {
+        if (type === NotificationsType.access) {
+            this.formGroup.patchValue({ delay: 0, interval: 0 });
+        }
     }
 
     onSubscriptionChanged(type: AlarmsType, value: boolean) {
@@ -72,6 +84,7 @@ export class NotificationPropertyComponent implements OnInit {
         }
         return false;
     }
+
 
     isValidName(): ValidatorFn {
         const names = this.projectService.getNotifications().map(not => not.name);
@@ -90,4 +103,3 @@ export class NotificationPropertyComponent implements OnInit {
 export interface NotificationPropertyData {
     notification: Notification;
 }
-

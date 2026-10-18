@@ -14,16 +14,17 @@
         <div class="block mt10">
             <div class="my-form-field">
                 <span>*{{'notification.property-type' | translate}}</span>
-                <mat-select formControlName="type" style="width: 207px">
+                <mat-select formControlName="type" (selectionChange)="onTypeChanged($event.value)" style="width: 207px">
                     <mat-option [value]=""> </mat-option>
                     <mat-option [value]="notificationAlarm"> {{ notificationsType[notificationAlarm] }} </mat-option>
+                    <mat-option [value]="notificationAccess"> {{ notificationsType[notificationAccess] }} </mat-option>
                 </mat-select>
             </div>
-            <div class="my-form-field ml15">
+            <div class="my-form-field ml15" *ngIf="formGroup.value.type === notificationAlarm">
                 <span>{{'notification.property-delay' | translate}}</span>
                 <input numberOnly formControlName="delay" type="number" max="60" min="1" step="1" style="width:80px">
             </div>
-            <div class="my-form-field ml15">
+            <div class="my-form-field ml15" *ngIf="formGroup.value.type === notificationAlarm">
                 <span>{{'notification.property-interval' | translate}}</span>
                 <input numberOnly formControlName="interval" type="number" max="60" min="0" step="1" style="width:80px">
             </div>
@@ -44,6 +45,12 @@
             <mat-checkbox *ngFor="let item of alarmsType" (change)="onSubscriptionChanged(item, $event.checked)" [checked]="getTypeValue(item)" style="margin: 7px 10px 7px 10px;">
                 {{'alarm.property-' + item | translate}}
             </mat-checkbox>
+        </div>
+        <div class="my-form-field block mt10" *ngIf="formGroup.value.type === notificationAccess">
+            <span>{{'notification.property-language' | translate}}</span>
+            <mat-select formControlName="language" style="width: 207px">
+                <mat-option *ngFor="let language of notificationLanguages" [value]="language.value">{{language.text | translate}}</mat-option>
+            </mat-select>
         </div>
     </div>
     <div mat-dialog-actions class="dialog-action mt10">

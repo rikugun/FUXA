@@ -3,6 +3,7 @@
 const http = require('http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const apiIndex = require('../../api');
 const authApi = require('../../api/auth');
@@ -60,6 +61,130 @@ describe('Security - JWT lifecycle', () => {
         expect = chai.expect;
     });
 
+    it('returns the same signin failure response for unknown users and bad passwords', async () => {
+        const passwordHash = bcrypt.hashSync('correct-password', 4);
+        const runtime = {
+            project: {},
+            users: {
+                findOne(credentials) {
+                    if (credentials.username === 'admin') {
+                        return Promise.resolve([
+                            {
+                                username: 'admin',
+                                fullname: 'Administrator',
+                                password: passwordHash,
+                                groups: -1,
+                                info: '{}'
+                            }
+                        ]);
+                    }
+                    return Promise.resolve([]);
+                }
+            },
+            logger: {
+                error() {},
+                info() {}
+            }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(express.json());
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const headers = { 'Content-Type': 'application/json' };
+            const existingUser = await request(server, {
+                method: 'POST',
+                path: '/api/signin',
+                headers,
+                body: JSON.stringify({ username: 'admin', password: 'wrong-password' })
+            });
+            const unknownUser = await request(server, {
+                method: 'POST',
+                path: '/api/signin',
+                headers,
+                body: JSON.stringify({ username: 'user_does_not_exist_999', password: 'wrong-password' })
+            });
+
+            expect(existingUser.statusCode).to.equal(401);
+            expect(unknownUser.statusCode).to.equal(401);
+            expect(unknownUser.json).to.deep.equal(existingUser.json);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
+    it('rejects signin attempts that omit the username', async () => {
+        const passwordHash = bcrypt.hashSync('correct-password', 4);
+        let findOneCalls = 0;
+        const runtime = {
+            project: {},
+            users: {
+                findOne(credentials) {
+                    findOneCalls++;
+                    // Mirror usrstorage.getUsers(): an absent username returns every
+                    // user, so without the guard the first row (admin) would authenticate.
+                    if (!credentials || !credentials.username || credentials.username === 'admin') {
+                        return Promise.resolve([
+                            {
+                                username: 'admin',
+                                fullname: 'Administrator',
+                                password: passwordHash,
+                                groups: -1,
+                                info: '{}'
+                            }
+                        ]);
+                    }
+                    return Promise.resolve([]);
+                }
+            },
+            logger: {
+                error() {},
+                info() {}
+            }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(express.json());
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const headers = { 'Content-Type': 'application/json' };
+            const noUsername = await request(server, {
+                method: 'POST',
+                path: '/api/signin',
+                headers,
+                body: JSON.stringify({ password: 'correct-password' })
+            });
+            const blankUsername = await request(server, {
+                method: 'POST',
+                path: '/api/signin',
+                headers,
+                body: JSON.stringify({ username: '   ', password: 'correct-password' })
+            });
+            const validLogin = await request(server, {
+                method: 'POST',
+                path: '/api/signin',
+                headers,
+                body: JSON.stringify({ username: 'admin', password: 'correct-password' })
+            });
+
+            expect(noUsername.statusCode).to.equal(401);
+            expect(noUsername.json).to.deep.equal({ status: 'error', message: 'Invalid email/password!!!', data: null });
+            expect(blankUsername.statusCode).to.equal(401);
+            expect(validLogin.statusCode).to.equal(200);
+            expect(validLogin.json.data.username).to.equal('admin');
+            // Only the valid login may reach the user lookup.
+            expect(findOneCalls).to.equal(1);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
     it('rejects refresh cookies for deleted users instead of reusing token groups', async () => {
         const runtime = {
             project: {},
@@ -95,6 +220,153 @@ describe('Security - JWT lifecycle', () => {
 
             expect(response.statusCode).to.equal(401);
             expect(response.json.message).to.equal('Invalid refresh token');
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
+    it('clears Node-RED auth cookies on signout', async () => {
+        const accessEvents = [];
+        const runtime = {
+            project: {},
+            settings: {
+                https: false
+            },
+            events: {
+                emit(event, data) {
+                    accessEvents.push({ event, data });
+                }
+            },
+            logger: {
+                error() {},
+                info() {}
+            }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const response = await request(server, {
+                method: 'POST',
+                path: '/api/signout',
+                headers: {
+                    Cookie: 'nodered_auth=stale-token'
+                }
+            });
+
+            expect(response.statusCode).to.equal(204);
+            const setCookies = response.headers['set-cookie'] || [];
+            expect(setCookies.some(cookie =>
+                cookie.startsWith('nodered_auth=;') &&
+                cookie.includes('Path=/nodered')
+            )).to.equal(true);
+            expect(setCookies.some(cookie =>
+                cookie.startsWith('nodered_auth=;') &&
+                cookie.includes('Path=/;')
+            )).to.equal(true);
+            expect(accessEvents).to.deep.equal([]);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
+    it('includes the verified username in the signout event', async () => {
+        const accessEvents = [];
+        const runtime = {
+            project: {},
+            settings: { https: false },
+            events: {
+                emit(event, data) {
+                    accessEvents.push({ event, data });
+                }
+            },
+            logger: { error() {}, info() {} }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const token = jwt.sign({ id: 'alice', groups: 1 }, SECRET, { expiresIn: '1h' });
+            const response = await request(server, {
+                method: 'POST',
+                path: '/api/signout',
+                headers: { 'x-access-token': token }
+            });
+
+            expect(response.statusCode).to.equal(204);
+            expect(accessEvents).to.deep.equal([{ event: 'access:logout', data: { username: 'alice' } }]);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
+    it('does not trust an invalid access token for logout attribution', async () => {
+        const accessEvents = [];
+        const runtime = {
+            project: {},
+            settings: { https: false },
+            events: {
+                emit(event, data) {
+                    accessEvents.push({ event, data });
+                }
+            },
+            logger: { error() {}, info() {} }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const forgedToken = jwt.sign({ id: 'mallory', groups: -1 }, 'different-secret', { expiresIn: '1h' });
+            const response = await request(server, {
+                method: 'POST',
+                path: '/api/signout',
+                headers: { 'x-access-token': forgedToken }
+            });
+
+            expect(response.statusCode).to.equal(204);
+            expect(accessEvents).to.deep.equal([]);
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    });
+
+    it('attributes logout to a user with an expired but correctly signed access token', async () => {
+        const accessEvents = [];
+        const runtime = {
+            project: {},
+            settings: { https: false },
+            events: {
+                emit(event, data) {
+                    accessEvents.push({ event, data });
+                }
+            },
+            logger: { error() {}, info() {} }
+        };
+
+        authApi.init(runtime, SECRET, '1h', false, '7d');
+        const app = express();
+        app.use(authApi.app());
+        const server = await listen(app);
+
+        try {
+            const token = jwt.sign({ id: 'alice', groups: 1 }, SECRET, { expiresIn: '-1s' });
+            const response = await request(server, {
+                method: 'POST',
+                path: '/api/signout',
+                headers: { 'x-access-token': token }
+            });
+
+            expect(response.statusCode).to.equal(204);
+            expect(accessEvents).to.deep.equal([{ event: 'access:logout', data: { username: 'alice' } }]);
         } finally {
             await new Promise((resolve) => server.close(resolve));
         }

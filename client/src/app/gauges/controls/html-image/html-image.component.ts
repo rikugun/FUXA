@@ -40,6 +40,7 @@ export class HtmlImageComponent extends GaugeBaseComponent {
         anticlockwise: GaugeActionsType.anticlockwise,
         rotate: GaugeActionsType.rotate,
         move: GaugeActionsType.move,
+        moveByTags: GaugeActionsType.moveByTags,
         refreshImage: GaugeActionsType.refreshImage,
         loadImage: GaugeActionsType.loadImage,
     };
@@ -134,7 +135,7 @@ export class HtmlImageComponent extends GaugeBaseComponent {
         }
         if (pro.actions && pro.actions.length) {
             pro.actions.forEach(act => {
-                res.push(act.variableId);
+                ShapesComponent.addActionSignals(res, act);
             });
         }
         pro.varsToBind?.forEach((varToBind: WidgetPropertyVariable) => {
@@ -208,11 +209,11 @@ export class HtmlImageComponent extends GaugeBaseComponent {
                     // check actions
                     if (ga.property.actions) {
                         ga.property.actions.forEach(act => {
-                            if (act.variableId === sig.id) {
+                            if (ShapesComponent.isActionSignal(act, sig.id)) {
                                 if (this.actionsType[act.type] === this.actionsType.loadImage) {
                                     HtmlImageComponent.actionLoadImage(act, svgele, value);
                                 } else {
-                                    ShapesComponent.processAction(act, svgele, value, gaugeStatus, propertyColor);
+                                    ShapesComponent.processAction(act, svgele, value, gaugeStatus, propertyColor, sig.id);
                                 }
                             }
                         });
@@ -266,7 +267,7 @@ export class HtmlImageComponent extends GaugeBaseComponent {
         let element = SVG.adopt(svgele.node);
         let img = Utils.searchTreeTagName(element.node, 'IMG');
         if (img) {
-            img.setAttribute('src', HtmlImageComponent.withSnapshotAuth(`/snapshots${sig.value}`));
+            img.setAttribute('src', HtmlImageComponent.withSnapshotAuth(`${EndPointApi.getBasePath()}/snapshots${sig.value}`));
         }
     }
 
@@ -288,17 +289,22 @@ export class HtmlImageComponent extends GaugeBaseComponent {
     }
 
     private static withSnapshotAuth(src: string): string {
-        if (!src || !src.startsWith('/snapshots')) {
+        if (!src || !src.startsWith(`${EndPointApi.getBasePath()}/snapshots`)) {
             return src;
         }
 
-        const separator = src.indexOf('?') === -1 ? '?' : '&';
-        const cacheBuster = `t=${new Date().getTime()}`;
+        const [path, query] = src.split('?');
+        const params = new URLSearchParams(query);
+        params.delete('t');
+        params.delete('token');
+
         const token = (window as any).fuxaAccessToken || HtmlImageComponent.getStoredAccessToken();
-        if (!token) {
-            return `${src}${separator}${cacheBuster}`;
+        if (token) {
+            params.set('token', token);
         }
-        return `${src}${separator}token=${encodeURIComponent(token)}&${cacheBuster}`;
+        params.set('t', new Date().getTime().toString());
+
+        return `${path}?${params.toString()}`;
     }
 
     private static getStoredAccessToken(): string {

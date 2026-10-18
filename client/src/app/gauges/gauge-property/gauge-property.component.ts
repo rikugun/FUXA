@@ -208,7 +208,9 @@ export enum GaugeDialogType {
     Input,
     Panel,
     Video,
-    Scheduler
+    Scheduler,
+    Recipe,
+    ThreeD
 }
 
 export interface GaugePropertyData {

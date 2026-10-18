@@ -88,7 +88,7 @@ import { LibImagesComponent } from './resources/lib-images/lib-images.component'
 import { DialogDraggableDirective } from './_directives/dialog-draggable.directive';
 import { ModalPositionCache } from './_directives/modal-position.cache';
 import { DraggableDirective } from './_directives/ngx-draggable.directive';
-import { NumberOnlyDirective, NumberOrNullOnlyDirective } from './_directives/number.directive';
+import { NumberOnlyDirective, NumberOrNullOnlyDirective, NonNegativeIntegerOnlyDirective } from './_directives/number.directive';
 import { LazyForDirective } from './_directives/lazyFor.directive';
 
 import { GaugesManager } from './gauges/gauges.component';
@@ -226,6 +226,7 @@ import { TagPropertyEditWebcamComponent } from './device/tag-property/tag-proper
 import { EditPlaceholderComponent } from './gui-helpers/edit-placeholder/edit-placeholder.component';
 import { DeviceAdapterService } from './device-adapter/device-adapter.service';
 import { VideoPropertyComponent } from './gauges/controls/html-video/video-property/video-property.component';
+import { ThreeDPropertyComponent } from './gauges/controls/html-3d/three-d-property/three-d-property.component';
 import { InputPropertyComponent } from './gauges/controls/html-input/input-property/input-property.component';
 import { TagPropertyEditMelsecComponent } from './device/tag-property/tag-property-edit-melsec/tag-property-edit-melsec.component';
 import { SchedulerConfirmDialogComponent } from './gauges/controls/html-scheduler/scheduler-confirm-dialog/scheduler-confirm-dialog.component';
@@ -241,6 +242,12 @@ import { SectionMessageDialogComponent } from './editor/section-message-dialog/s
 import { ArMarkerListComponent } from './ar/ar-marker-list/ar-marker-list.component';
 import { ArMarkerPropertyComponent } from './ar/ar-marker-property/ar-marker-property.component';
 import { ArViewComponent } from './ar/ar-view/ar-view.component';
+import { RecipeListComponent } from './recipes/recipe-list/recipe-list.component';
+import { RecipeEditorComponent } from './recipes/recipe-editor/recipe-editor.component';
+import { RecipeProgressComponent } from './recipes/recipe-progress/recipe-progress.component';
+import { HtmlRecipeViewComponent, HtmlRecipeComponent } from './gauges/controls/html-recipe/html-recipe.component';
+import { HtmlRecipeNewDialogComponent } from './gauges/controls/html-recipe/html-recipe-new-dialog/html-recipe-new-dialog.component';
+import { RecipePropertyComponent } from './gauges/controls/html-recipe/recipe-property/recipe-property.component';
 
 export function createTranslateLoader(http: HttpClient) {
     return new TranslateHttpLoader(http, './assets/i18n/', '.json');
@@ -339,6 +346,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         NumberOnlyDirective,
         StopInputPropagationDirective,
         NumberOrNullOnlyDirective,
+        NonNegativeIntegerOnlyDirective,
         NgxFabButtonComponent,
         NgxFabItemButtonComponent,
         TreetableComponent,
@@ -416,6 +424,7 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         ClientScriptAccessComponent,
         TagPropertyEditWebcamComponent,
         VideoPropertyComponent,
+        ThreeDPropertyComponent,
         HtmlSchedulerComponent,
         SchedulerComponent,
         SchedulerPropertyComponent,
@@ -430,7 +439,14 @@ export const myCustomTooltipDefaults: MatTooltipDefaultOptions = {
         SectionMessageDialogComponent,
         ArMarkerListComponent,
         ArMarkerPropertyComponent,
-        ArViewComponent
+        ArViewComponent,
+        RecipeListComponent,
+        RecipeEditorComponent,
+        RecipeProgressComponent,
+        HtmlRecipeViewComponent,
+        HtmlRecipeComponent,
+        HtmlRecipeNewDialogComponent,
+        RecipePropertyComponent
     ],
     bootstrap: [AppComponent], imports: [BrowserModule,
         FormsModule,

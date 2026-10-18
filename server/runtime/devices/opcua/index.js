@@ -391,14 +391,18 @@ function OpcUAclient(_data, _logger, _events, _runtime) {
                 }
             ];
 
-            the_session.write(nodesToWrite, function (err, statusCodes) {
-                if (err) {
-                    logger.error(`'${data.name}' setValue error! ${err}`);
-                } else {
-                    logger.info(`'${data.name}' setValue(${tagId}, ${value})`, true, true);
+            try {
+                const statusCodes = await the_session.write(nodesToWrite);
+                if (statusCodes.length !== nodesToWrite.length || statusCodes.some(status => !status.isGood())) {
+                    logger.error(`'${data.name}' setValue failed: ${statusCodes.join(', ')}`);
+                    return false;
                 }
-            });
-            return true;
+                logger.info(`'${data.name}' setValue(${tagId}, ${value})`, true, true);
+                return true;
+            } catch (err) {
+                logger.error(`'${data.name}' setValue error! ${err}`);
+                return false;
+            }
         }
         return false;
     }
@@ -550,10 +554,10 @@ function OpcUAclient(_data, _logger, _events, _runtime) {
                 let id = tagsIdMap[nodeId];
                 if (data.tags[id]) {
                     let rawVal = dataValue.value.value;
-                    let parsed = false;
-                    if (Array.isArray(rawVal) && rawVal.length > 0) {
+                    // Scalar Int64/UInt64 values use word pairs. Actual OPC UA
+                    // arrays and matrices must retain every element.
+                    if (dataValue.value.arrayType === opcua.VariantArrayType.Scalar && Array.isArray(rawVal) && rawVal.length > 0) {
                         rawVal = rawVal[rawVal.length - 1];
-                        parsed = true;
                     }
                     data.tags[id].rawValue = rawVal;
                     data.tags[id].dataType = dataValue.value.dataType;

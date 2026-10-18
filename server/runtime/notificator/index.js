@@ -166,6 +166,7 @@ function NotificatorManager(_runtime) {
                                     temp.delay = notification.delay;
                                     temp.interval = notification.interval;
                                     temp.enabled = notification.enabled;
+                                    temp.language = notification.language;
                                     temp.text = notification.text;
                                     temp.subscriptions = notification.subscriptions;
                                     temp.options = notification.options;
@@ -174,6 +175,19 @@ function NotificatorManager(_runtime) {
                                     notificationsFound++;
                                 }
                             });
+                            if (notification.type === 'access') {
+                                if (!notificationsSubsctiption.access) {
+                                    notificationsSubsctiption.access = [];
+                                }
+                                var accessNotification = new Notification(notification.id, notification.name, notification.type);
+                                accessNotification.receiver = notification.receiver;
+                                accessNotification.enabled = notification.enabled;
+                                accessNotification.language = notification.language;
+                                accessNotification.text = notification.text;
+                                accessNotification.options = notification.options;
+                                notificationsSubsctiption.access.push(accessNotification);
+                                notificationsFound++;
+                            }
                         }
                     });
                 }
@@ -222,6 +236,26 @@ function NotificatorManager(_runtime) {
     var _isValidEmail = function (email) {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         return emailRegex.test(email);
+    }
+
+    var _sendAccessNotifications = async function (event, data) {
+        // Access notifications have no login/logout subscriptions: every
+        // notification configured as type "access" receives both events.
+        const notifications = notificationsSubsctiption.access || [];
+        for (const notification of notifications) {
+            try {
+                const content = runtime.localization.translate(notification.language, `notification-${event}`, {
+                    user: data?.username || ''
+                });
+                if (!_isValidEmail(notification.receiver)) {
+                    await runtime.notificatorMgr.postMessage(notification.receiver.replace(/\$\{content\}/g, content));
+                } else {
+                    await runtime.notificatorMgr.sendMail(new MailMessage(null, notification.receiver, notification.name, content), null);
+                }
+            } catch (err) {
+                logger.error(`notificator.access.send.failed: ${err}`);
+            }
+        }
     }
 
     /**
@@ -315,10 +349,12 @@ function NotificatorManager(_runtime) {
             try {
                 var smtpServer = smtp || settings.smtp;
                 if (smtpServer && smtpServer.host && smtpServer.port && smtpServer.username && smtpServer.password) {
+                    // the settings form saves the port as text ("465")
+                    const port = Number(smtpServer.port);
                     const transporter = nodemailer.createTransport({
                         host: smtpServer.host,
-                        port: smtpServer.port,
-                        secure: (smtpServer.port === 465) ? true : false, // true for 465, false for other ports
+                        port: port,
+                        secure: port === 465, // true for 465, false for other ports
                         auth: {
                             user: smtpServer.username,
                             pass: smtpServer.password
@@ -356,6 +392,8 @@ function NotificatorManager(_runtime) {
 
     // check if alarms status chenaged
     events.on('alarms-status:changed', this.forceCheck);
+    events.on('access:login', data => _sendAccessNotifications('login', data));
+    events.on('access:logout', data => _sendAccessNotifications('logout', data));
 }
 
 module.exports = {
@@ -392,6 +430,7 @@ function Notification(id, name, type) {
     this.notifytime = 0;
     this.notifytype = '';
     this.enabled = true;
+    this.language = 'en';
     this.text;
     this.subscriptions = {};
     this.options;

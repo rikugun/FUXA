@@ -1,4 +1,4 @@
-﻿/* eslint-disable @angular-eslint/component-class-suffix */
+/* eslint-disable @angular-eslint/component-class-suffix */
 import { Component, Inject, OnInit, OnDestroy, AfterViewInit, ViewChild, ViewContainerRef, ComponentFactoryResolver, ElementRef } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
 import { MatDialog as MatDialog, MatDialogRef as MatDialogRef, MAT_DIALOG_DATA as MAT_DIALOG_DATA} from '@angular/material/dialog';
@@ -25,6 +25,7 @@ import { HtmlSelectComponent } from '../gauges/controls/html-select/html-select.
 import { ValueComponent } from '../gauges/controls/value/value.component';
 import { GaugeProgressComponent } from '../gauges/controls/gauge-progress/gauge-progress.component';
 import { GaugeSemaphoreComponent } from '../gauges/controls/gauge-semaphore/gauge-semaphore.component';
+import { Html3dComponent } from '../gauges/controls/html-3d/html-3d.component';
 import { HtmlSwitchPropertyComponent } from '../gauges/controls/html-switch/html-switch-property/html-switch-property.component';
 
 import { GridsterItem } from 'angular-gridster2';
@@ -41,6 +42,7 @@ import { MapsViewComponent } from '../maps/maps-view/maps-view.component';
 import { KioskWidgetsComponent } from '../resources/kiosk-widgets/kiosk-widgets.component';
 import { ResourcesService } from '../_services/resources.service';
 import { InputPropertyComponent } from '../gauges/controls/html-input/input-property/input-property.component';
+import { ThreeDPropertyComponent } from '../gauges/controls/html-3d/three-d-property/three-d-property.component';
 import { SettingsService } from '../_services/settings.service';
 import { OnboardingWizardComponent } from './onboarding-wizard/onboarding-wizard.component';
 
@@ -121,6 +123,7 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
     mapsViewType = ViewType.maps;
     shapesGrps = [];
     private gaugesRef = {};
+    private removedGaugeSettings: { [id: string]: GaugeSettings } = {};
 
     private subscriptionSave: Subscription;
     private subscriptionLoad: Subscription;
@@ -258,7 +261,16 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                     }
                 },
                 (eleadded) => {
-                    let ga: GaugeSettings = this.getGaugeSettings(eleadded, this.ctrlInitParams);
+                    if (eleadded.restoreFromHistory) {
+                        const restoredSettings = this.removedGaugeSettings[eleadded.id];
+                        if (restoredSettings) {
+                            this.currentView.items[eleadded.id] = restoredSettings;
+                            delete this.removedGaugeSettings[eleadded.id];
+                        }
+                        return;
+                    }
+                    let ga: GaugeSettings = this.removedGaugeSettings[eleadded.id] || this.getGaugeSettings(eleadded, this.ctrlInitParams);
+                    delete this.removedGaugeSettings[eleadded.id];
                     this.checkGaugeAdded(ga);
                     setTimeout(() => {
                         this.setMode('select', false);
@@ -395,6 +407,21 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
             return this.currentView.svgcontent;
         }
         return this.winRef.nativeWindow.svgEditor.getSvgString();
+    }
+
+    private destroyRemovedGauges() {
+        Object.keys(this.removedGaugeSettings).forEach(id => {
+            const gauge = this.gaugesRef[id]?.ref;
+            if (gauge && typeof gauge.ngOnDestroy === 'function') {
+                try {
+                    gauge.ngOnDestroy();
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+            delete this.gaugesRef[id];
+        });
+        this.removedGaugeSettings = {};
     }
 
     /**
@@ -542,7 +569,10 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
 
                 // check gauge to init
+                this.destroyRemovedGauges();
                 this.gaugesRef = {};
+                this.removedGaugeSettings = {};
+
                 if (v) { this.projectService.cleanView(v); }
                 setTimeout(() => {
                     for (let key in v.items) {
@@ -772,16 +802,17 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.currentView && this.currentView.items && ele) {
             for (let i = 0; i < ele.length; i++) {
                 if (this.currentView.items[ele[i].id]) {
+                    this.removedGaugeSettings[ele[i].id] = this.currentView.items[ele[i].id];
                     delete this.currentView.items[ele[i].id];
-                    if (this.gaugesRef.hasOwnProperty(ele[i].id)) {
-                        if (this.gaugesRef[ele[i].id].ref && this.gaugesRef[ele[i].id].ref['ngOnDestroy']) {
-                            try {
-                                this.gaugesRef[ele[i].id].ref['ngOnDestroy']();
-                            } catch (e) {
-                                console.error(e);
-                            }
-                        }
-                    }
+                    // if (this.gaugesRef.hasOwnProperty(ele[i].id)) {
+                    //     if (this.gaugesRef[ele[i].id].ref && this.gaugesRef[ele[i].id].ref['ngOnDestroy']) {
+                    //         try {
+                    //             this.gaugesRef[ele[i].id].ref['ngOnDestroy']();
+                    //         } catch (e) {
+                    //             console.error(e);
+                    //         }
+                    //     }
+                    // }
                 }
             }
         }
@@ -1403,6 +1434,15 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
             }
             this.reloadGaugeDialog = !this.reloadGaugeDialog;
             return;
+        } else if (dlgType === GaugeDialogType.ThreeD) {
+            dialogRef = this.dialog.open(ThreeDPropertyComponent, {
+                position: { top: '60px' },
+                disableClose: true,
+                data: {
+                    settings: tempsettings,
+                    withActions: actionsSupported
+                }
+            });
         } else if (dlgType === GaugeDialogType.Input) {
             dialogRef = this.dialog.open(InputPropertyComponent, {
                 position: { top: '60px' },
@@ -1425,6 +1465,20 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
                 withEvents: eventsSupported,
                 withActions: actionsSupported,
                 languageTextEnabled: !!this.isSelectedElementToEnableLanguageTextSettings()
+            };
+            if (!this.sidePanel.opened) {
+                this.sidePanel.toggle();
+            }
+            this.reloadGaugeDialog = !this.reloadGaugeDialog;
+            return;
+        } else if (dlgType === GaugeDialogType.Recipe) {
+            this.gaugeDialog.type = dlgType;
+            this.gaugeDialog.data = {
+                settings: tempsettings,
+                withEvents: false,
+                withActions: false,
+                withBitmask: false,
+                languageTextEnabled: false
             };
             if (!this.sidePanel.opened) {
                 this.sidePanel.toggle();
@@ -1539,6 +1593,8 @@ export class EditorComponent implements OnInit, AfterViewInit, OnDestroy {
             return this.translateService.instant('editor.controls-progress-settings');
         } else if (type.startsWith(GaugeSemaphoreComponent.TypeTag)) {
             return this.translateService.instant('editor.controls-semaphore-settings');
+        } else if (type.startsWith(Html3dComponent.TypeTag)) {
+            return this.translateService.instant('editor.controls-3d-settings');
         } else {
             return this.translateService.instant('editor.controls-shape-settings');
         }

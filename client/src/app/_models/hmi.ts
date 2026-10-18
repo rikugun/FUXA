@@ -1,5 +1,5 @@
 import { GridType } from 'angular-gridster2';
-import { Device, DeviceType, Tag } from './device';
+import { Device, DeviceType, ServerTagType, Tag } from './device';
 import { WidgetPropertyVariable } from '../_helpers/svg-utils';
 import { MapsLocation } from './maps';
 
@@ -322,6 +322,7 @@ export enum GaugeActionsType {
     downup = 'shapes.action-downup',
     rotate = 'shapes.action-rotate',
     move = 'shapes.action-move',
+    moveByTags = 'shapes.action-moveByTags',
     monitor = 'shapes.action-monitor',
     refreshImage = 'shapes.action-refreshImage',
     loadImage = 'shapes.action-loadImage',
@@ -355,6 +356,15 @@ export class GaugeActionRotate {
 export class GaugeActionMove {
     toX = 0;
     toY = 0;
+    duration = 100;
+}
+
+export class GaugeActionMoveByTags {
+    axis: 'x' | 'y' = 'x';
+    valueMin = 0;
+    valueMax = 100;
+    positionMin = 0;
+    positionMax = 100;
     duration = 100;
 }
 
@@ -630,7 +640,17 @@ export class Variable {
         this.name = name;
         this.device = device;
         if (device?.type === DeviceType.internal) {
-            this.value = '0';
+            const tag = device.tags?.[id];
+            const init = tag?.init;
+            const hasInit = init !== undefined && init !== null && init !== '';
+            if (tag?.type === ServerTagType.string) {
+                this.value = hasInit ? String(init) : '';
+            } else if (tag?.type === ServerTagType.boolean) {
+                const normalized = String(init).trim().toLowerCase();
+                this.value = hasInit && (normalized === 'true' || normalized === '1') ? '1' : '0';
+            } else {
+                this.value = hasInit ? String(parseFloat(init)) : '0';
+            }
         }
     }
 }
@@ -776,5 +796,20 @@ export interface VideoOptions {
     initImage?: string;
     showControls?: boolean;
     loop?: boolean;
+}
+
+export class Gauge3dProperty extends GaugeProperty {
+    constructor() {
+        super();
+        this.options = new ThreeDOptions();
+    }
+}
+
+export class ThreeDOptions {
+    address = '';
+    autoRotate = false;
+    bgColor = '';
+    fov = 60;
+    camera = 'perspective';
 }
 

@@ -7,12 +7,16 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const authJwt = require('../jwt-helper');
 
+// In order to work under a reverse proxy, I import the BASE PATH
+const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/+$/, '');
+
 var runtime;
 var secretCode;
 var tokenExpiresIn;
 var enableRefreshCookieAuth = false;
 var refreshTokenExpiresIn = '7d';
 const refreshCookieName = 'fuxa_refresh';
+const nodeRedAuthCookieName = 'nodered_auth';
 
 function parseExpiresToMs(expiresIn) {
     if (expiresIn === undefined || expiresIn === null) {
@@ -61,7 +65,7 @@ function setRefreshCookie(res, token) {
         httpOnly: true,
         sameSite: 'lax',
         secure: !!runtime?.settings?.https,
-        path: '/api/refresh'
+        path: BASE_PATH + '/api/refresh'
     };
     if (maxAge) {
         options.maxAge = maxAge;
@@ -70,7 +74,52 @@ function setRefreshCookie(res, token) {
 }
 
 function clearRefreshCookie(res) {
-    res.clearCookie(refreshCookieName, { path: '/api/refresh' });
+    res.clearCookie(refreshCookieName, {
+        path: BASE_PATH + '/api/refresh'
+    });
+}
+
+function clearNodeRedAuthCookie(res) {
+    res.clearCookie(nodeRedAuthCookieName, {
+        path: BASE_PATH + '/nodered',
+        sameSite: 'lax'
+    });
+    res.clearCookie(nodeRedAuthCookieName, {
+        path: BASE_PATH || '/',
+        sameSite: 'lax'
+    });
+}
+
+function sendInvalidSignInResponse(res) {
+    res.status(401).json({ status: 'error', message: 'Invalid email/password!!!', data: null });
+}
+
+function getLogoutUser(req) {
+    const accessToken = req.headers['x-access-token'];
+    if (accessToken) {
+        try {
+            const decoded = jwt.verify(accessToken, secretCode, { ignoreExpiration: true });
+            if (typeof decoded.id === 'string' && decoded.id && decoded.id !== 'guest' && decoded.type !== 'refresh') {
+                return { username: decoded.id };
+            }
+        } catch (err) {
+            // Logout must still clear cookies when the access token is expired or invalid.
+        }
+    }
+
+    const refreshToken = getCookieValue(req, refreshCookieName);
+    if (refreshToken) {
+        try {
+            const decoded = jwt.verify(refreshToken, secretCode);
+            if (decoded.type === 'refresh' && typeof decoded.id === 'string' && decoded.id && decoded.id !== 'guest') {
+                return { username: decoded.id };
+            }
+        } catch (err) {
+            // Do not trust an invalid refresh cookie for user attribution.
+        }
+    }
+
+    return {};
 }
 
 module.exports = {
@@ -98,6 +147,13 @@ module.exports = {
          * Sign In with User credentials
          */
         authApp.post('/api/signin', function (req, res, next) {
+            // Bind the attempt to a username: without it the storage lookup would
+            // fall back to every user and authenticate against the first row.
+            if (!req.body || typeof req.body.username !== 'string' || !req.body.username.trim()) {
+                sendInvalidSignInResponse(res);
+                runtime.logger.error('api post signin: missing username');
+                return;
+            }
             runtime.users.findOne(req.body).then(function (userInfo) {
                 if (userInfo && userInfo.length && userInfo[0].password) {
                     if (bcrypt.compareSync(req.body.password, userInfo[0].password)) {
@@ -118,13 +174,14 @@ module.exports = {
                             }
                         });
                         runtime.logger.info('api-signin: ' + userInfo[0].username + ' ' + userInfo[0].fullname + ' ' + userInfo[0].groups);
+                        runtime.events.emit('access:login', { username: userInfo[0].username, fullname: userInfo[0].fullname });
                     } else {
-                        res.status(401).json({ status: 'error', message: 'Invalid email/password!!!', data: null });
+                        sendInvalidSignInResponse(res);
                         runtime.logger.error('api post signin: Invalid email/password!!!');
                     }
                 } else {
-                    res.status(404).end();
-                    runtime.logger.error('api post signin: Not Found!');
+                    sendInvalidSignInResponse(res);
+                    runtime.logger.error('api post signin: Invalid email/password!!!');
                 }
             }).catch(function (err) {
                 if (err.code) {
@@ -198,6 +255,11 @@ module.exports = {
         authApp.post('/api/signout', function (req, res, next) {
             if (enableRefreshCookieAuth) {
                 clearRefreshCookie(res);
+            }
+            clearNodeRedAuthCookie(res);
+            const logoutUser = getLogoutUser(req);
+            if (logoutUser.username) {
+                runtime.events.emit('access:logout', logoutUser);
             }
             res.status(204).end();
         });

@@ -3,6 +3,7 @@ export class Notification {
     id: string;
     name: string;
     receiver: string;
+    language = 'en';
     delay = 1;
     interval = 0;
     enabled = true;
@@ -24,7 +25,8 @@ export enum NotificationMode {
 
 export enum NotificationsType {
     alarms = 'notification.type-alarm',
-    trigger = 'notification.type-trigger'
+    trigger = 'notification.type-trigger',
+    access = 'notification.type-access'
 }
 
 export const NOTIFY_PREFIX = 'n_';
